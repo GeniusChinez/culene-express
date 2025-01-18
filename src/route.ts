@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { z, ZodType } from "zod";
+import { z, ZodSchema } from "zod";
 import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import {
@@ -61,10 +61,10 @@ type ResponseConfig<Schema> = keyof (GetDataEntry<Schema> &
 type HasKeys<T> = keyof T extends never ? false : true;
 
 type HandlerArgs<
-  QuerySchema extends ZodType<any, any, any>,
-  ParamsSchema extends ZodType<any, any, any>,
-  BodySchema extends ZodType<any, any, any>,
-  HeadersSchema extends ZodType<any, any, any>,
+  QuerySchema extends ZodSchema<any>,
+  ParamsSchema extends ZodSchema<any>,
+  BodySchema extends ZodSchema<any>,
+  HeadersSchema extends ZodSchema<any>,
   Responses extends {
     [key: number]:
       | string
@@ -102,10 +102,10 @@ type HandlerArgs<
 };
 
 export interface RouteConfig<
-  QuerySchema extends ZodType<any, any, any>,
-  ParamsSchema extends ZodType<any, any, any>,
-  BodySchema extends ZodType<any, any, any>,
-  HeadersSchema extends ZodType<any, any, any>,
+  QuerySchema extends ZodSchema<any>,
+  ParamsSchema extends ZodSchema<any>,
+  BodySchema extends ZodSchema<any>,
+  HeadersSchema extends ZodSchema<any>,
   Responses extends {
     [key: number]:
       | string
@@ -153,10 +153,10 @@ export interface RouteConfig<
 }
 
 export function route<
-  QuerySchema extends ZodType<any, any, any>,
-  ParamsSchema extends ZodType<any, any, any>,
-  BodySchema extends ZodType<any, any, any>,
-  HeadersSchema extends ZodType<any, any, any>,
+  QuerySchema extends ZodSchema<any>,
+  ParamsSchema extends ZodSchema<any>,
+  BodySchema extends ZodSchema<any>,
+  HeadersSchema extends ZodSchema<any>,
   Responses extends {
     [key: number]:
       | string
