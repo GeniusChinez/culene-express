@@ -1,6 +1,6 @@
-# Culene Express Route Handler
+# Culene Express Routing
 
-This package provides an easy way to define routes with structured input validation using Zod, manage responses, handle user authentication, and generate API documentation automatically.
+This package provides an easy way to define routes with structured input validation using Zod, manage responses, handle user authentication, and generate API documentation automatically. You can also create and configure an express app directly.
 
 ## Features
 
@@ -9,6 +9,8 @@ This package provides an easy way to define routes with structured input validat
 - **Authentication**: Optionally validate users and get user data from requests.
 - **Response Handling**: Automatically validates and returns responses based on defined schemas.
 - **API Documentation**: Automatically generate OpenAPI specs and HTML documentation.
+- **Middleware Support**: Attach custom middleware to individual routes or groups of routes.
+- **App Creation**: Easily configure and set up an Express app with built-in middleware, rate limiting, and documentation.
 
 ## Installation
 
@@ -102,138 +104,78 @@ export const createUsers = routing.route(
 createUsers.attachTo(app);
 ```
 
-### 2. Automatic OpenAPI Documentation
+### 2. Use Middleware
 
-The route includes functionality to generate an OpenAPI spec and HTML documentation.
-
-- **OpenAPI Spec**: Accessible at `/auth/register/docs`.
-- **HTML Documentation**: Accessible at `/auth/register/html-docs`.
-
-### 3. Route Configuration
-
-The route configuration is passed as the first argument to the `route` function. Here's the structure:
+You can attach middleware to routes or route groups to handle additional logic such as logging, authorization, or rate-limiting.
 
 ```ts
-{
-  methods: HttpMethod[];  // Array of HTTP methods (GET, POST, etc.)
-  path: string;           // The route path
-  description: string;    // A description of the route
-  input?: {
-    query?: ZodSchema;
-    params?: ZodSchema;
-    body?: ZodSchema;
-    headers?: ZodSchema;
-  };                      // Input schemas to validate request data
-  user?: {
-    getCurrentUser: (request: Request) => Promise<any>;
-    required?: boolean;
-  };                      // Optional user authentication
-  response: {
-    [statusCode: number]: string | { description: string; data?: ZodSchema; headers?: ZodSchema };
-  };                      // Response status codes and schemas
-  docs: {
-    query?: Record<string, { description: string; example?: any }>;
-    params?: Record<string, { description: string; example?: any }>;
-    body?: Record<string, { description: string; example?: any }>;
-    headers?: Record<string, { description: string; example?: any }>;
-  };                      // Documentation for input fields
-}
-```
+import { route, middleware } from "culene";
 
-### 4. Response Handling
+const logMiddleware = middleware(async (req, res, next) => {
+  console.log(`Request made to ${req.path}`);
+  next();
+});
 
-The response is automatically validated according to the schema you define. For example, in the above code, a `200` status code response includes data and headers.
-
-```ts
-response: {
-  200: {
-    description: "User created",
-    data: z.object({
-      id: z.string(),
-    }),
-    headers: z.object({
-      secret: z.string(),
-    }),
+export const createPost = route(
+  {
+    methods: ["POST"],
+    path: "/posts",
+    description: "Create a new post",
+    middlewares: [logMiddleware],
+    input: {
+      body: z.object({
+        title: z.string(),
+        content: z.string(),
+      }),
+    },
+    response: {
+      201: {
+        description: "Post created successfully",
+        data: z.object({
+          id: z.string(),
+        }),
+      },
+    },
   },
-}
+  async (context) => {
+    const { title, content } = context.input.body;
+    const newPost = { id: "uniquePostId", title, content };
+    return context.respond({
+      status: 201,
+      data: newPost,
+    });
+  }
+);
 ```
 
-### 5. User Authentication
+### 4. Create an App
 
-The `user` field is optional and allows you to authenticate users before processing the request. If a user is required, the `getCurrentUser` function should return user data based on the request. It can throw an exception to indicate an error.
-
-### 6. Error Handling
-
-The package provides built-in error handling for common HTTP errors:
-
-- **400 (Bad Request)**: Invalid input data.
-- **401 (Unauthorized)**: User authentication failed.
-- **500 (Server Error)**: Internal server error.
-
-## Example of Error Handling
+The `createApp` function simplifies the setup of an Express app with common configurations like middleware, rate limiting, and Swagger documentation.
 
 ```ts
-if (!result.success) {
-  return reportBadRequestError({
-    res,
-    message: "Invalid input data",
-    data: formatZodError(result.error),
+import { createApp } from "culene";
+
+const appConfig = {
+  title: "Culene API",
+  version: "1.1.0",
+  description: "Enhanced API with route groups and middleware",
+  rateLimiting: {
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+  },
+  routes: [postRoutes],
+};
+
+async function main() {
+  const { app, start } = await createApp(appConfig);
+  start(3000, {
+    onStart: () => console.log("Server started on port 3000"),
   });
 }
-```
 
-## Additional Functions
-
-### `attachTo`
-
-The `attachTo` function attaches the route to an Express router.
-
-```ts
-createUsers.attachTo(app);
-```
-
-### `getOpenApiSpec`
-
-Use this function to get the OpenAPI specification for the route.
-
-```ts
-createUsers.getOpenApiSpec();
-```
-
-## API Documentation
-
-The OpenAPI spec is automatically generated for each route. You can view the JSON or HTML version of the documentation:
-
-- JSON version: `/auth/register/docs`
-- HTML version: `/auth/register/html-docs`
-
-### Example OpenAPI Spec
-
-```json
-{
-  "summary": "Create an account",
-  "parameters": [
-    {
-      "name": "username",
-      "in": "body",
-      "description": "The name of the user",
-      "required": true,
-      "example": "Peter",
-      "schema": { "type": "string" }
-    }
-  ],
-  "responses": {
-    "200": {
-      "description": "User created",
-      "content": {
-        "application/json": {
-          "schema": { "type": "object", "properties": { "id": { "type": "string" } } }
-        }
-      }
-    }
-  }
-}
+main();
 ```
 
 ## License
+
 This project is licensed under the MIT License.

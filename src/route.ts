@@ -16,7 +16,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
-type ZodCompatible<T> = T extends ZodSchema<any> ? T : ZodType<any, any, any>;
+export type ZodCompatible<T> =
+  T extends ZodSchema<any> ? T : ZodType<any, any, any>;
 
 type GetResponseDataSchema<T> = T extends string
   ? never
