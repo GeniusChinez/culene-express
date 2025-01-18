@@ -1,151 +1,239 @@
-# **Express API Handler**  
-Generate fully-documented route handlers with type-safe request and response handling.
+# Express Route Handler
 
-<!-- [![npm version](https://img.shields.io/npm/v/merl.svg)](https://www.npmjs.com/package/express-route-handler)  
-[![Downloads](https://img.shields.io/npm/dt/express-route-handler.svg)](https://www.npmjs.com/package/express-route-handler)   -->
+This package provides an easy way to define routes with structured input validation using Zod, manage responses, handle user authentication, and generate API documentation automatically.
 
-## **Overview**  
-`express-route-handler` is a lightweight node-express utility that allows you to define fully-documented type-safe endpoints with request & response validation.
+## Features
 
----
-<!-- 
-## **Features**  
-- 🛠 **Type-Safe URL Generation**: Compile-time safety for dynamic and query parameters.  
-- 🚀 **Simple API**: Easy-to-use chaining for building nested routes.  
-- ⚡ **Lightweight and Fast**: Minimal overhead for modern web applications.  
-- 🔒 **Error Prevention**: Guards against invalid routes or missing parameters.  
+- **Route Definitions**: Define routes with HTTP methods, path, and description.
+- **Input Validation**: Validate query parameters, path parameters, request body, and headers using Zod.
+- **Authentication**: Optionally validate users and get user data from requests.
+- **Response Handling**: Automatically validates and returns responses based on defined schemas.
+- **API Documentation**: Automatically generate OpenAPI specs and HTML documentation.
 
---- -->
+## Installation
 
-## **Installation**
-
-Install `express-route-handler` via npm or yarn:
+To install the package, run:
 
 ```bash
 npm install express-route-handler
 ```
 
-or
+## Usage
 
-```bash
-yarn add express-route-handler
+### 1. Define a Route
+
+You can define a route by calling the `route` function. It requires a configuration object and a handler function.
+
+```ts
+import express from "express";
+import { Request } from "express";
+import routing from "express-route-handler";
+import { z } from "zod";
+
+const app = express();
+
+async function getCurrentUser(request: Request) {
+  return {
+    id: "exampleId",
+    fullName: "Jane Doe",
+    email: "example@gmail.com",
+    kind: "admin",
+    ip: request.ip,
+  };
+}
+
+export const createUsers = routing.route(
+  {
+    methods: ["POST"],
+    path: "/auth/register",
+    description: "Create an account",
+    input: {
+      body: z.object({
+        username: z.string(),
+        password: z.string(),
+      }),
+    },
+    user: {
+      getCurrentUser,
+      required: false,
+    },
+    response: {
+      200: {
+        description: "User created",
+        data: z.object({
+          id: z.string(),
+        }),
+        headers: z.object({
+          secret: z.string(),
+        }),
+      },
+      403: "User already logged in",
+    },
+    docs: {
+      body: {
+        username: {
+          description: "The name of the user",
+          example: "Peter",
+        },
+        password: {
+          description: "The user's password",
+          example: "12345678",
+        },
+      },
+    },
+  },
+  async (context) => {
+    if (context.user) {
+      console.log(`${context.user.fullName} already logged in`);
+      return context.respond({
+        status: 403,
+        message: "Please log out, human",
+      });
+    }
+
+    return context.respond({
+      status: 200,
+      data: { id: "something" },
+      headers: { secret: "things" },
+    });
+  }
+);
+
+createUsers.attachTo(app);
 ```
 
----
+### 2. Automatic OpenAPI Documentation
 
-<!-- ## **Usage**  
+The route includes functionality to generate an OpenAPI spec and HTML documentation.
 
-### **Step 1: Define Your URL Patterns**
+- **OpenAPI Spec**: Accessible at `/auth/register/docs`.
+- **HTML Documentation**: Accessible at `/auth/register/html-docs`.
 
-```typescript
-import merl from 'merl';
+### 3. Route Configuration
 
-// Declare all your routes
-const urls = [
-  'products/:productId/reviews/:reviewId',
-  'categories/:categoryId/items',
-  '/about',
-  '/search',
-] as const;
+The route configuration is passed as the first argument to the `route` function. Here's the structure:
 
-// Compile URL patterns
-const pathBuilder = merl.compile(urls);
+```ts
+{
+  methods: HttpMethod[];  // Array of HTTP methods (GET, POST, etc.)
+  path: string;           // The route path
+  description: string;    // A description of the route
+  input?: {
+    query?: ZodSchema;
+    params?: ZodSchema;
+    body?: ZodSchema;
+    headers?: ZodSchema;
+  };                      // Input schemas to validate request data
+  user?: {
+    getCurrentUser: (request: Request) => Promise<any>;
+    required?: boolean;
+  };                      // Optional user authentication
+  response: {
+    [statusCode: number]: string | { description: string; data?: ZodSchema; headers?: ZodSchema };
+  };                      // Response status codes and schemas
+  docs: {
+    query?: Record<string, { description: string; example?: any }>;
+    params?: Record<string, { description: string; example?: any }>;
+    body?: Record<string, { description: string; example?: any }>;
+    headers?: Record<string, { description: string; example?: any }>;
+  };                      // Documentation for input fields
+}
 ```
 
-### **Step 2: Generate Dynamic URLs**
+### 4. Response Handling
 
-```typescript
-// Example: Product Review URL
-const productReviewUrl = pathBuilder.products
-  .using('42') // Replace :productId with '42'
-  .reviews.using('7') // Replace :reviewId with '7'
-  .url();
+The response is automatically validated according to the schema you define. For example, in the above code, a `200` status code response includes data and headers.
 
-console.log(productReviewUrl); // Output: /products/42/reviews/7
+```ts
+response: {
+  200: {
+    description: "User created",
+    data: z.object({
+      id: z.string(),
+    }),
+    headers: z.object({
+      secret: z.string(),
+    }),
+  },
+}
 ```
 
-### **Step 3: Add Query Parameters**
+### 5. User Authentication
 
-```typescript
-const categoryItemsUrl = pathBuilder.categories
-  .using('electronics') // Replace :categoryId with 'electronics'
-  .items.url({ sort: 'asc', page: 2 });
+The `user` field is optional and allows you to authenticate users before processing the request. If a user is required, the `getCurrentUser` function should return user data based on the request. It can throw an exception to indicate an error.
 
-console.log(categoryItemsUrl); // Output: /categories/electronics/items?sort=asc&page=2
+### 6. Error Handling
+
+The package provides built-in error handling for common HTTP errors:
+
+- **400 (Bad Request)**: Invalid input data.
+- **401 (Unauthorized)**: User authentication failed.
+- **500 (Server Error)**: Internal server error.
+
+## Example of Error Handling
+
+```ts
+if (!result.success) {
+  return reportBadRequestError({
+    res,
+    message: "Invalid input data",
+    data: formatZodError(result.error),
+  });
+}
 ```
 
-### **Step 4: Access Static URLs**
+## Additional Functions
 
-```typescript
-const aboutUrl = pathBuilder.about.url();
-console.log(aboutUrl); // Output: /about
+### `attachTo`
 
-const searchUrl = pathBuilder.search.url({ q: 'laptops' });
-console.log(searchUrl); // Output: /search?q=laptops
+The `attachTo` function attaches the route to an Express router.
+
+```ts
+createUsers.attachTo(app);
 ```
 
----
+### `getOpenApiSpec`
 
-## **Advanced Usage**  
+Use this function to get the OpenAPI specification for the route.
 
-### **Nested Routes**
-Chain `.using()` calls to handle deeply nested routes.
-
-```typescript
-const nestedUrl = pathBuilder.products
-  .using('99')
-  .reviews.using('12')
-  .url({ highlight: true });
-
-console.log(nestedUrl); // Output: /products/99/reviews/12?highlight=true
+```ts
+createUsers.getOpenApiSpec();
 ```
 
-### **Error Handling**
-`merl` prevents incorrect usage at compile-time in TypeScript.
+## API Documentation
 
-```typescript
-// TypeScript error: Missing :productId
-// const invalidUrl = pathBuilder.products.url();
+The OpenAPI spec is automatically generated for each route. You can view the JSON or HTML version of the documentation:
 
-// Correct usage:
-const validUrl = pathBuilder.products.using('10').reviews.using('5').url();
-console.log(validUrl); // Output: /products/10/reviews/5
+- JSON version: `/auth/register/docs`
+- HTML version: `/auth/register/html-docs`
+
+### Example OpenAPI Spec
+
+```json
+{
+  "summary": "Create an account",
+  "parameters": [
+    {
+      "name": "username",
+      "in": "body",
+      "description": "The name of the user",
+      "required": true,
+      "example": "Peter",
+      "schema": { "type": "string" }
+    }
+  ],
+  "responses": {
+    "200": {
+      "description": "User created",
+      "content": {
+        "application/json": {
+          "schema": { "type": "object", "properties": { "id": { "type": "string" } } }
+        }
+      }
+    }
+  }
+}
 ```
 
----
-
-## **API Reference**  
-
-### **`m.compile(routes: readonly string[])`**  
-Compiles a list of URL patterns into a type-safe `pathBuilder` object.
-
-- **`routes`**: An array of URL strings (e.g., `'path/:dynamicSegment'`).
-
-### **Dynamic Segments**
-Use `.using(value)` to replace dynamic segments (e.g., `:productId`).
-
-### **Query Parameters**
-Add query parameters with `.url(query)`:
-- **`query`**: An object where keys are parameter names and values are strings or numbers.
-
----
-
-## **Why Merl?**
-
-- 🚦 **Eliminates Runtime Errors**: Type-checking ensures your URLs are always valid.  
-- 📚 **Readable Code**: Focus on route logic instead of manual string concatenation.  
-- 🧹 **Maintainability**: Centralize your route definitions in a single place.  
-
---- -->
-
-## **License**  
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## **Links**  
-
-- [NPM Package](https://www.npmjs.com/package/express-route-handler)  
-- [GitHub Repository](https://github.com/GeniusChinez/express-route-handler)  
-- [Issues](https://github.com/GeniusChinez/express-route-handler/issues)
+## License
+This project is licensed under the MIT License.
