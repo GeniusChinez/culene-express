@@ -1,0 +1,43 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "declaration": true, // Automatically generates .d.ts files
+    // "declarationDir": "./dist/types",
+    "emitDeclarationOnly": false,
+    "outDir": "dist/esm",
+    "target": "es2020", /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
+    "module": "ES2020", /* Specify what module code is generated. */
+    "moduleResolution": "node", /* Specify how TypeScript looks up a file from a given module specifier. */ /* Specify a file that bundles all outputs into one JavaScript file. If 'declaration' is true, also designates a file that bundles all .d.ts output. */
+    "esModuleInterop": true, /* Emit additional JavaScript to ease support for importing CommonJS modules. This enables 'allowSyntheticDefaultImports' for type compatibility. */
+    "forceConsistentCasingInFileNames": true, /* Ensure that casing is correct in imports. */
+    /* Type Checking */
+    "strict": true, /* Enable all strict type-checking options. */
+    "skipLibCheck": true, /* Skip type checking all .d.ts files. */
+    "baseUrl": ".",
+    "allowJs": true,
+    "isolatedModules": true,
+    "noEmit": false,
+    // "noEmit": true,
+    "resolveJsonModule": true,
+    "types": [
+      "jest",
+      "node"
+    ],
+    "lib": [
+      "es5",
+      "es2015",
+      "es2016",
+      "dom",
+      "dom.iterable",
+      "ESNext"
+    ],
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "**/__tests__/**"
+  ],
+}
