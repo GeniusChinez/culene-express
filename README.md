@@ -148,6 +148,36 @@ export const createPost = route(
 );
 ```
 
+### 3. Add custom user authorization logic
+```ts
+export const getUsers = route(
+  {
+    methods: ["GET"],
+    path: "/users",
+    description: "Get users",
+    user: {
+      getCurrentUser,
+      authorize: (user) => user.kind === "admin",
+      // the "authorize" callback can be async or sync, and receives the user for the argument
+    },
+    response: {
+      200: {
+        description: "Users retrieved",
+        data: z.object({
+          id: z.string(),
+        }).array(),
+      },
+    },
+  },
+  async (context) => {
+    return context.respond({
+      status: 200,
+      data: [],
+    });
+  }
+);
+```
+
 ### 4. Create an App
 
 The `createApp` function simplifies the setup of an Express app with common configurations like middleware, rate limiting, and Swagger documentation.

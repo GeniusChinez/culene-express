@@ -6,6 +6,7 @@ import { Middleware } from "./middleware";
 import {
   okResponse,
   reportBadRequestError,
+  reportForbiddenError,
   reportServerError,
   reportUnauthorizedError,
 } from "./response";
@@ -63,6 +64,19 @@ type ResponseConfig<Schema> = keyof (GetDataEntry<Schema> &
   : GetDataEntry<Schema> & GetHeadersEntry<Schema>;
 
 type HasKeys<T> = keyof T extends never ? false : true;
+type InferUserType<UserSpec> =
+  HasKeys<UserSpec> extends true
+    ? UserSpec extends {
+        getCurrentUser: (request: Request) => Promise<infer UserT>;
+        required: false;
+      }
+      ? UserT | undefined
+      : UserSpec extends {
+            getCurrentUser: (request: Request) => Promise<infer UserT>;
+          }
+        ? UserT
+        : never
+    : never;
 
 type HandlerArgs<
   QuerySchema extends ZodCompatible<ZodSchema<any>>,
@@ -91,18 +105,7 @@ type HandlerArgs<
     >,
   ) => void;
   device: string;
-  user: HasKeys<UserSpec> extends true
-    ? UserSpec extends {
-        getCurrentUser: (request: Request) => Promise<infer UserT>;
-        required: false;
-      }
-      ? UserT | undefined
-      : UserSpec extends {
-            getCurrentUser: (request: Request) => Promise<infer UserT>;
-          }
-        ? UserT
-        : never
-    : never;
+  user: InferUserType<UserSpec>;
 };
 
 export interface RouteConfig<
@@ -126,7 +129,11 @@ export interface RouteConfig<
   path: string;
   description: string;
   middleware?: Array<Middleware>;
-  user?: UserSpec;
+  user?: {
+    [k in keyof UserSpec]: UserSpec[k];
+  } & {
+    authorize?: (user: InferUserType<UserSpec>) => boolean | Promise<boolean>;
+  };
   input?: {
     query?: QuerySchema;
     params?: ParamsSchema;
@@ -264,6 +271,12 @@ export function route<
     if (config.user) {
       try {
         user = await config.user.getCurrentUser(req);
+        if (config.user.authorize && !(await config.user.authorize(user))) {
+          return reportForbiddenError({
+            res,
+            message: "Authorization failed",
+          });
+        }
       } catch (e) {
         console.log(e);
         if (config.user.required !== false) {

@@ -5,7 +5,13 @@ import { z } from "zod";
 
 const app = express();
 
-async function getCurrentUser(request: Request) {
+async function getCurrentUser(request: Request): Promise<{
+  id: "exampleId";
+  fullName: "Jane Doe";
+  email: "example@gmail.com";
+  kind: "admin" | "normal";
+  ip: string | undefined;
+}> {
   return {
     id: "exampleId",
     fullName: "Jane Doe",
@@ -30,7 +36,8 @@ export const createUsers = route(
     user: {
       // optional
       getCurrentUser,
-      required: false, // optional
+      required: true, // optional
+      authorize: (user) => user.kind === "normal",
     },
     response: {
       200: {
@@ -98,6 +105,12 @@ export const routeX = route(
     router: app, // will automatically attach this route to the given express router
     methods: ["GET"],
     path: "/",
+    user: {
+      getCurrentUser,
+      authorize(user) {
+        return user.kind === "admin";
+      },
+    },
     description: "Test",
     response: {
       200: "Nice work",
@@ -105,6 +118,9 @@ export const routeX = route(
     docs: {},
   } as const,
   async (ctx) => {
+    const temp = ctx.user;
+    console.log(temp);
+
     return ctx.respond({
       status: 200, // message will default to "Nice Work"
     });
