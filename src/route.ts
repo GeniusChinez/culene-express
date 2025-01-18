@@ -111,8 +111,8 @@ export interface RouteConfig<
       | string
       | {
           description?: string;
-          data?: z.ZodSchema;
-          headers?: z.ZodSchema;
+          data?: z.ZodSchema<any>;
+          headers?: z.ZodSchema<any>;
         };
   },
   UserSpec,
@@ -162,8 +162,8 @@ export function route<
       | string
       | {
           description?: string;
-          data?: z.ZodSchema;
-          headers?: z.ZodSchema;
+          data?: z.ZodSchema<any>;
+          headers?: z.ZodSchema<any>;
         };
   },
   UserSpec extends {
