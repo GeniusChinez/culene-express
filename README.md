@@ -109,7 +109,7 @@ createUsers.attachTo(app);
 You can attach middleware to routes to handle additional logic such as logging, authorization, or rate-limiting.
 
 ```ts
-import { route, middleware } from "culene";
+import { route } from "culene";
 
 const logMiddleware = async (req, res, next) => {
   console.log(`Request made to ${req.path}`);
