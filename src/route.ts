@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { z, ZodSchema } from "zod";
+import { z, ZodSchema, ZodType } from "zod";
 import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import {
@@ -14,6 +14,9 @@ import { formatZodError } from "./validations";
 import { getDeviceId } from "./device";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
+
+// Define a utility type that ensures any Zod schema is compatible with ZodType
+type ZodCompatible<T> = T extends ZodSchema<any> ? T : ZodType<any, any, any>;
 
 type GetResponseDataSchema<T> = T extends string
   ? never
@@ -61,10 +64,10 @@ type ResponseConfig<Schema> = keyof (GetDataEntry<Schema> &
 type HasKeys<T> = keyof T extends never ? false : true;
 
 type HandlerArgs<
-  QuerySchema extends ZodSchema<any>,
-  ParamsSchema extends ZodSchema<any>,
-  BodySchema extends ZodSchema<any>,
-  HeadersSchema extends ZodSchema<any>,
+  QuerySchema extends ZodCompatible<ZodSchema<any>>,
+  ParamsSchema extends ZodCompatible<ZodSchema<any>>,
+  BodySchema extends ZodCompatible<ZodSchema<any>>,
+  HeadersSchema extends ZodCompatible<ZodSchema<any>>,
   Responses extends {
     [key: number]:
       | string
@@ -102,17 +105,17 @@ type HandlerArgs<
 };
 
 export interface RouteConfig<
-  QuerySchema extends ZodSchema<any>,
-  ParamsSchema extends ZodSchema<any>,
-  BodySchema extends ZodSchema<any>,
-  HeadersSchema extends ZodSchema<any>,
+  QuerySchema extends ZodCompatible<ZodSchema<any>>,
+  ParamsSchema extends ZodCompatible<ZodSchema<any>>,
+  BodySchema extends ZodCompatible<ZodSchema<any>>,
+  HeadersSchema extends ZodCompatible<ZodSchema<any>>,
   Responses extends {
     [key: number]:
       | string
       | {
           description?: string;
-          data?: z.ZodSchema<any>;
-          headers?: z.ZodSchema<any>;
+          data?: ZodCompatible<ZodSchema<any>>;
+          headers?: ZodCompatible<ZodSchema<any>>;
         };
   },
   UserSpec,
@@ -153,17 +156,17 @@ export interface RouteConfig<
 }
 
 export function route<
-  QuerySchema extends ZodSchema<any>,
-  ParamsSchema extends ZodSchema<any>,
-  BodySchema extends ZodSchema<any>,
-  HeadersSchema extends ZodSchema<any>,
+  QuerySchema extends ZodCompatible<ZodSchema<any>>,
+  ParamsSchema extends ZodCompatible<ZodSchema<any>>,
+  BodySchema extends ZodCompatible<ZodSchema<any>>,
+  HeadersSchema extends ZodCompatible<ZodSchema<any>>,
   Responses extends {
     [key: number]:
       | string
       | {
           description?: string;
-          data?: z.ZodSchema<any>;
-          headers?: z.ZodSchema<any>;
+          data?: ZodCompatible<ZodSchema<any>>;
+          headers?: ZodCompatible<ZodSchema<any>>;
         };
   },
   UserSpec extends {
