@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { z, ZodSchema } from "zod";
+import { z, ZodType } from "zod";
 import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import {
@@ -19,7 +19,7 @@ type GetResponseDataSchema<T> = T extends string
   ? never
   : T extends {
         description?: any;
-        data: z.ZodType<any, any, any>;
+        data: any;
         headers?: any;
       }
     ? T["data"] extends undefined
@@ -32,7 +32,7 @@ type GetResponseHeadersSchema<T> = T extends string
   : T extends {
         description?: any;
         data?: any;
-        headers: z.ZodType<any, any, any>;
+        headers: any;
       }
     ? T["headers"] extends undefined
       ? never
@@ -61,16 +61,16 @@ type ResponseConfig<Schema> = keyof (GetDataEntry<Schema> &
 type HasKeys<T> = keyof T extends never ? false : true;
 
 type HandlerArgs<
-  QuerySchema extends ZodSchema,
-  ParamsSchema extends ZodSchema,
-  BodySchema extends ZodSchema,
-  HeadersSchema extends ZodSchema,
+  QuerySchema extends ZodType<any, any, any>,
+  ParamsSchema extends ZodType<any, any, any>,
+  BodySchema extends ZodType<any, any, any>,
+  HeadersSchema extends ZodType<any, any, any>,
   Responses extends {
     [key: number]:
       | string
       | {
           description?: string;
-          data?: z.ZodType<any, any, any>;
+          data?: any;
         };
   },
   UserSpec,
@@ -102,10 +102,10 @@ type HandlerArgs<
 };
 
 export interface RouteConfig<
-  QuerySchema extends ZodSchema,
-  ParamsSchema extends ZodSchema,
-  BodySchema extends ZodSchema,
-  HeadersSchema extends ZodSchema,
+  QuerySchema extends ZodType<any, any, any>,
+  ParamsSchema extends ZodType<any, any, any>,
+  BodySchema extends ZodType<any, any, any>,
+  HeadersSchema extends ZodType<any, any, any>,
   Responses extends {
     [key: number]:
       | string
@@ -153,10 +153,10 @@ export interface RouteConfig<
 }
 
 export function route<
-  QuerySchema extends ZodSchema,
-  ParamsSchema extends ZodSchema,
-  BodySchema extends ZodSchema,
-  HeadersSchema extends ZodSchema,
+  QuerySchema extends ZodType<any, any, any>,
+  ParamsSchema extends ZodType<any, any, any>,
+  BodySchema extends ZodType<any, any, any>,
+  HeadersSchema extends ZodType<any, any, any>,
   Responses extends {
     [key: number]:
       | string
