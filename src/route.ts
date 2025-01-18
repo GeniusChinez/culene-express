@@ -143,7 +143,7 @@ export interface RouteConfig<
 
   response: Responses;
 
-  docs: {
+  docs?: {
     query?: Record<
       keyof z.infer<QuerySchema>,
       { description: string; example?: any }
@@ -340,14 +340,9 @@ export function route<
   };
 
   const getOpenApiSpec = () => {
-    const {
-      methods,
-      path,
-      description,
-      input,
-      docs: { params, headers, query, body },
-      response,
-    } = config;
+    const { methods, path, description, input, docs, response } = config;
+
+    const { params, headers, query, body } = docs || {};
 
     const spec: any = {
       summary: description,

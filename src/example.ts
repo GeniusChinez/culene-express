@@ -112,10 +112,14 @@ export const routeX = route(
       },
     },
     description: "Test",
+    input: {
+      body: z.object({
+        name: z.string(),
+      }),
+    },
     response: {
       200: "Nice work",
     },
-    docs: {},
   } as const,
   async (ctx) => {
     const temp = ctx.user;
