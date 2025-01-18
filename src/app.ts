@@ -16,7 +16,7 @@ export interface AppConfig {
   useHelmet?: boolean;
   rateLimiting: {
     numberOfProxies?: number;
-  } & RateLimitingOptions;
+  } & Partial<RateLimitingOptions>;
   tempFileDir?: string;
   routes: ReturnType<typeof route>[];
 
