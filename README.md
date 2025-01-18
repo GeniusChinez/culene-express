@@ -1,4 +1,4 @@
-# Express Route Handler
+# Culene Express Route Handler
 
 This package provides an easy way to define routes with structured input validation using Zod, manage responses, handle user authentication, and generate API documentation automatically.
 
@@ -15,7 +15,7 @@ This package provides an easy way to define routes with structured input validat
 To install the package, run:
 
 ```bash
-npm install express-route-handler
+npm install culene
 ```
 
 ## Usage
@@ -27,7 +27,7 @@ You can define a route by calling the `route` function. It requires a configurat
 ```ts
 import express from "express";
 import { Request } from "express";
-import routing from "express-route-handler";
+import routing from "culene";
 import { z } from "zod";
 
 const app = express();

@@ -1,5 +1,5 @@
 {
-  "name": "express-route-handler",
+  "name": "culene",
   "version": "1.0.0",
   "description": "Define capable route handlers with type safe definitions",
   "main": "dist/cjs/index.js",
