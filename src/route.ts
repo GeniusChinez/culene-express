@@ -226,10 +226,10 @@ export function route<
       if (config.input.query) {
         const queryParams = config.input.query;
         try {
-          const { data } = await logger.process(
+          const data = await logger.process(
             "Validating query parameters",
             async () => {
-              return await queryParams.safeParseAsync(req.query);
+              return await queryParams.parseAsync(req.query);
             },
           );
           query = data;
@@ -247,8 +247,8 @@ export function route<
       if (config.input.body) {
         const bodyParams = config.input.body;
         try {
-          const { data } = await logger.process("Validating body", async () => {
-            return await bodyParams.safeParseAsync(req.body);
+          const data = await logger.process("Validating body", async () => {
+            return await bodyParams.parseAsync(req.body);
           });
           body = data;
         } catch (e) {
@@ -265,10 +265,10 @@ export function route<
       if (config.input.params) {
         const pathParams = config.input.params;
         try {
-          const { data } = await logger.process(
+          const data = await logger.process(
             "Validating path parameters",
             async () => {
-              return await pathParams.safeParseAsync(req.params);
+              return await pathParams.parseAsync(req.params);
             },
           );
           params = data;
@@ -286,12 +286,9 @@ export function route<
       if (config.input.headers) {
         const headerParams = config.input.headers;
         try {
-          const { data } = await logger.process(
-            "Validating headers",
-            async () => {
-              return await headerParams.safeParseAsync(req.headers);
-            },
-          );
+          const data = await logger.process("Validating headers", async () => {
+            return await headerParams.parseAsync(req.headers);
+          });
           headers = data;
         } catch (e) {
           logger.error(invalidInputMessage || "Invalid headers");
