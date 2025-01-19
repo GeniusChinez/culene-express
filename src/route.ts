@@ -70,7 +70,7 @@ type InferUserType<UserSpec> =
     ? UserSpec extends {
         getCurrentUser: (
           request: Request,
-          logger?: Logger,
+          logger: Logger,
         ) => Promise<infer UserT>;
         required: false;
       }
@@ -78,7 +78,7 @@ type InferUserType<UserSpec> =
       : UserSpec extends {
             getCurrentUser: (
               request: Request,
-              logger?: Logger,
+              logger: Logger,
             ) => Promise<infer UserT>;
           }
         ? UserT
@@ -142,7 +142,7 @@ export interface RouteConfig<
   } & {
     authorize?: (
       user: InferUserType<UserSpec>,
-      logger?: Logger,
+      logger: Logger,
     ) => boolean | Promise<boolean>;
   };
   input?: {
@@ -189,7 +189,7 @@ export function route<
         };
   },
   UserSpec extends {
-    getCurrentUser: (request: Request, logger?: Logger) => Promise<any>;
+    getCurrentUser: (request: Request, logger: Logger) => Promise<any>;
     required?: boolean;
   },
 >(
