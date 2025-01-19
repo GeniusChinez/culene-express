@@ -102,6 +102,7 @@ export type HandlerArgs<
     >,
   ) => void;
   device: string;
+  responses: Responses;
   user: InferUserType<UserSpec>;
 };
 

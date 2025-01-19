@@ -47,8 +47,19 @@ export class CustomError<
       >;
     },
   ) {
+    function getDefaultErrorMessage() {
+      const responses = config.context.responses;
+      return typeof responses[config.status] === "string"
+        ? responses[config.status]
+        : typeof responses[config.status] === "object" &&
+            "description" in (responses as any)[config.status]
+          ? (responses as any)[config.status].description
+          : "";
+    }
+
     this.status = config.status;
-    this.message = config.message;
+    this.message =
+      config.message || getDefaultErrorMessage() || "Something went wrong";
     this.data = "data" in config ? config.data : undefined;
     this.context = config.context;
   }

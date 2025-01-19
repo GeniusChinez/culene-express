@@ -230,6 +230,7 @@ export function route<
       > = {
         request: req,
         response: res,
+        responses: config.response,
         user,
         logger,
         device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
