@@ -2,6 +2,7 @@ import express from "express";
 import { Request } from "express";
 import { route } from "./route";
 import { z } from "zod";
+import { CustomError } from "./custom-error";
 
 const app = express();
 
@@ -118,15 +119,25 @@ export const routeX = route(
       }),
     },
     response: {
-      200: "Nice work",
+      400: {
+        description: "Nice work",
+        data: z.object({
+          token: z.string(),
+        }),
+      },
+      501: "soMETHING",
     },
   } as const,
   async (ctx) => {
     const temp = ctx.user;
     console.log(temp);
 
-    return ctx.respond({
-      status: 200, // message will default to "Nice Work"
+    throw new CustomError({
+      context: ctx,
+      status: 400,
+      data: {
+        token: "",
+      },
     });
   },
 );

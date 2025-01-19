@@ -1,38 +1,11 @@
 import { createApp } from "./app";
 import { createLogger } from "./logs";
 import { route } from "./route";
-import {
-  isCustomError,
-  CustomError,
-  HttpNotFoundError,
-  HttpBadRequestError,
-  HttpUnauthorizedError,
-  HttpForbiddenError,
-  HttpConflictError,
-  HttpInternalServerError,
-  HttpUnprocessableEntityError,
-  HttpTooManyRequestsError,
-  HttpServiceUnavailableError,
-} from "./custom-error";
+import { isCustomError, CustomError } from "./custom-error";
 
 export type { Logger } from "./logs";
 
-export {
-  route,
-  createApp,
-  createLogger,
-  isCustomError,
-  CustomError,
-  HttpNotFoundError,
-  HttpBadRequestError,
-  HttpUnauthorizedError,
-  HttpForbiddenError,
-  HttpConflictError,
-  HttpInternalServerError,
-  HttpUnprocessableEntityError,
-  HttpTooManyRequestsError,
-  HttpServiceUnavailableError,
-};
+export { route, createApp, createLogger, isCustomError, CustomError };
 
 export default {
   route,
@@ -40,13 +13,4 @@ export default {
   createLogger,
   isCustomError,
   CustomError,
-  HttpNotFoundError,
-  HttpBadRequestError,
-  HttpUnauthorizedError,
-  HttpForbiddenError,
-  HttpConflictError,
-  HttpInternalServerError,
-  HttpUnprocessableEntityError,
-  HttpTooManyRequestsError,
-  HttpServiceUnavailableError,
 };

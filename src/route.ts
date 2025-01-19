@@ -1,178 +1,20 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-
-import { z, ZodError, ZodSchema, ZodType } from "zod";
-import { HttpMethod } from "./methods";
-import { Middleware } from "./middleware";
-import { okResponse, reportServerError, respond } from "./response";
-import { Request, Response, Router } from "express";
-import { formatZodError } from "./validations";
-import { getDeviceId } from "./device";
-import { zodToJsonSchema } from "zod-to-json-schema";
-import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
+import { z, ZodError, ZodSchema } from "zod";
+import { HandlerArgs, RouteConfig, ZodCompatible } from "./route.types";
 import { createLogger, Logger } from "./logs";
+import { Request, Response, Router } from "express";
+import { isCustomError } from "./custom-error";
 import {
-  HttpBadRequestError,
-  HttpForbiddenError,
-  HttpUnauthorizedError,
-  isCustomError,
-} from "./custom-error";
-
-// Define a utility type that ensures any Zod schema is compatible with ZodType
-export type ZodCompatible<T> =
-  T extends ZodSchema<any> ? T : ZodType<any, any, any>;
-
-type GetResponseDataSchema<T> = T extends string
-  ? never
-  : T extends {
-        description?: any;
-        data: any;
-        headers?: any;
-      }
-    ? T["data"] extends undefined
-      ? never
-      : z.infer<T["data"]>
-    : never;
-
-type GetResponseHeadersSchema<T> = T extends string
-  ? never
-  : T extends {
-        description?: any;
-        data?: any;
-        headers: any;
-      }
-    ? T["headers"] extends undefined
-      ? never
-      : z.infer<T["headers"]>
-    : never;
-
-type GetDataEntry<Schema> =
-  GetResponseDataSchema<Schema> extends never
-    ? object
-    : {
-        data: GetResponseDataSchema<Schema>;
-      };
-
-type GetHeadersEntry<Schema> =
-  GetResponseHeadersSchema<Schema> extends never
-    ? object
-    : {
-        headers: GetResponseHeadersSchema<Schema>;
-      };
-
-type ResponseConfig<Schema> = keyof (GetDataEntry<Schema> &
-  GetHeadersEntry<Schema>) extends never
-  ? object
-  : GetDataEntry<Schema> & GetHeadersEntry<Schema>;
-
-type HasKeys<T> = keyof T extends never ? false : true;
-type InferUserType<UserSpec> =
-  HasKeys<UserSpec> extends true
-    ? UserSpec extends {
-        getCurrentUser: (
-          request: Request,
-          logger: Logger,
-        ) => Promise<infer UserT>;
-        required: false;
-      }
-      ? UserT | undefined
-      : UserSpec extends {
-            getCurrentUser: (
-              request: Request,
-              logger: Logger,
-            ) => Promise<infer UserT>;
-          }
-        ? UserT
-        : never
-    : never;
-
-type HandlerArgs<
-  QuerySchema extends ZodCompatible<ZodSchema<any>>,
-  ParamsSchema extends ZodCompatible<ZodSchema<any>>,
-  BodySchema extends ZodCompatible<ZodSchema<any>>,
-  HeadersSchema extends ZodCompatible<ZodSchema<any>>,
-  Responses extends {
-    [key: number]:
-      | string
-      | {
-          description?: string;
-          data?: any;
-        };
-  },
-  UserSpec,
-> = {
-  request: Request;
-  response: Response;
-  logger: ReturnType<typeof createLogger>;
-  query: z.infer<QuerySchema>;
-  body: z.infer<BodySchema>;
-  params: z.infer<ParamsSchema>;
-  headers: z.infer<HeadersSchema>;
-  respond: <ResponseStatus extends keyof Responses>(
-    config: { status: ResponseStatus; message?: string } & ResponseConfig<
-      Responses[ResponseStatus]
-    >,
-  ) => void;
-  device: string;
-  user: InferUserType<UserSpec>;
-};
-
-export interface RouteConfig<
-  QuerySchema extends ZodCompatible<ZodSchema<any>>,
-  ParamsSchema extends ZodCompatible<ZodSchema<any>>,
-  BodySchema extends ZodCompatible<ZodSchema<any>>,
-  HeadersSchema extends ZodCompatible<ZodSchema<any>>,
-  Responses extends {
-    [key: number]:
-      | string
-      | {
-          description?: string;
-          data?: ZodCompatible<ZodSchema<any>>;
-          headers?: ZodCompatible<ZodSchema<any>>;
-        };
-  },
-  UserSpec,
-> {
-  router?: Router;
-  methods: HttpMethod[];
-  path: string;
-  description: string;
-  middleware?: Array<Middleware>;
-  user?: {
-    [k in keyof UserSpec]: UserSpec[k];
-  } & {
-    authorize?: (
-      user: InferUserType<UserSpec>,
-      logger: Logger,
-    ) => boolean | Promise<boolean>;
-  };
-  input?: {
-    query?: QuerySchema;
-    params?: ParamsSchema;
-    body?: BodySchema;
-    headers?: HeadersSchema;
-  };
-
-  response: Responses;
-
-  docs?: {
-    query?: Record<
-      keyof z.infer<QuerySchema>,
-      { description: string; example?: any }
-    >;
-    params?: Record<
-      keyof z.infer<ParamsSchema>,
-      { description: string; example?: any }
-    >;
-    body?: Record<
-      keyof z.infer<BodySchema>,
-      { description: string; example?: any }
-    >;
-    headers?: Record<
-      keyof z.infer<HeadersSchema>,
-      { description: string; example?: any }
-    >;
-  };
-}
+  okResponse,
+  reportBadRequestError,
+  reportForbiddenError,
+  reportServerError,
+  reportUnauthorizedError,
+} from "./response";
+import zodToJsonSchema from "zod-to-json-schema";
+import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
+import { getDeviceId } from "./device";
+import { formatZodError } from "./validations";
 
 export function route<
   QuerySchema extends ZodCompatible<ZodSchema<any>>,
@@ -250,7 +92,8 @@ export function route<
               `Invalid query parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
             );
             logger.sources.pop();
-            throw new HttpBadRequestError({
+            return reportBadRequestError({
+              res,
               message: invalidInputMessage || "Invalid query parameters",
               data: formatZodError(e as ZodError),
             });
@@ -269,7 +112,8 @@ export function route<
               `Invalid body (${JSON.stringify(formatZodError(e as ZodError))})`,
             );
             logger.sources.pop();
-            throw new HttpBadRequestError({
+            return reportBadRequestError({
+              res,
               message: invalidInputMessage || "Invalid body",
               data: formatZodError(e as ZodError),
             });
@@ -291,7 +135,8 @@ export function route<
               `Invalid path parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
             );
             logger.sources.pop();
-            throw new HttpBadRequestError({
+            return reportBadRequestError({
+              res,
               message: invalidInputMessage || "Invalid path parameters",
               data: formatZodError(e as ZodError),
             });
@@ -313,7 +158,8 @@ export function route<
               `Invalid headers (${JSON.stringify(formatZodError(e as ZodError))})`,
             );
             logger.sources.pop();
-            throw new HttpBadRequestError({
+            return reportBadRequestError({
+              res,
               message: invalidInputMessage || "Invalid headers",
               data: formatZodError(e as ZodError),
             });
@@ -348,8 +194,8 @@ export function route<
               if (isCustomError(e)) {
                 throw e;
               }
-
-              throw new HttpForbiddenError({
+              return reportForbiddenError({
+                res,
                 message: "Authorization failed",
               });
             }
@@ -365,7 +211,8 @@ export function route<
             if (isCustomError(e)) {
               throw e;
             }
-            throw new HttpUnauthorizedError({
+            return reportUnauthorizedError({
+              res,
               message: "Unauthenticated",
             });
           }
@@ -421,12 +268,10 @@ export function route<
       return result;
     } catch (error) {
       logger.sources.pop();
-      return isCustomError(error)
-        ? respond({
-            res,
-            ...error,
-          })
-        : reportServerError({ res, message: "Something went wrong" });
+      if (isCustomError(error)) {
+        return error.context.respond(error);
+      }
+      return reportServerError({ res, message: "Something went wrong" });
     }
   };
 

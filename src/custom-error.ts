@@ -1,111 +1,72 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-type ResponseConfig = {
-  status: number;
-  message: string;
-  data?: any;
-};
+import { ZodSchema } from "zod";
+import { HandlerArgs, ResponseConfig, ZodCompatible } from "./route.types";
 
-export class CustomError {
-  constructor(config: { status: number; message: string; data?: any }) {
+type CustomErrorConfig<
+  Responses extends {
+    [key: number]:
+      | string
+      | {
+          description?: string;
+          data?: ZodCompatible<ZodSchema<any>>;
+          headers?: ZodCompatible<ZodSchema<any>>;
+        };
+  },
+  ResponseStatus extends keyof Responses,
+> = {
+  status: ResponseStatus;
+  message?: string;
+} & ResponseConfig<Responses[ResponseStatus]>;
+
+export class CustomError<
+  QuerySchema extends ZodCompatible<ZodSchema<any>>,
+  ParamsSchema extends ZodCompatible<ZodSchema<any>>,
+  BodySchema extends ZodCompatible<ZodSchema<any>>,
+  HeadersSchema extends ZodCompatible<ZodSchema<any>>,
+  Responses extends {
+    [key: number]:
+      | string
+      | {
+          description?: string;
+          data?: ZodCompatible<ZodSchema<any>>;
+          headers?: ZodCompatible<ZodSchema<any>>;
+        };
+  },
+  UserSpec,
+  ResponseStatus extends keyof Responses,
+> {
+  constructor(
+    config: CustomErrorConfig<Responses, ResponseStatus> & {
+      context: HandlerArgs<
+        QuerySchema,
+        ParamsSchema,
+        BodySchema,
+        HeadersSchema,
+        Responses,
+        UserSpec
+      >;
+    },
+  ) {
     this.status = config.status;
-    this.message = config.message;
-    this.data = config.data;
+    this.message = config.message || "Something went wrong";
+    this.data = "data" in config ? config.data : undefined;
+    this.context = config.context;
   }
-  status: number;
+  status: ResponseStatus;
   message: string;
   data?: any;
+  context: HandlerArgs<
+    QuerySchema,
+    ParamsSchema,
+    BodySchema,
+    HeadersSchema,
+    Responses,
+    UserSpec
+  >;
 }
 
-export function isCustomError(e: unknown) {
+export function isCustomError(
+  e: unknown,
+): e is CustomError<any, any, any, any, any, any, any> {
   return e instanceof CustomError;
-}
-
-export class HttpNotFoundError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Resource not found",
-      data: config?.data,
-      status: 404,
-    });
-  }
-}
-
-export class HttpBadRequestError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Bad request",
-      data: config?.data,
-      status: 400,
-    });
-  }
-}
-
-export class HttpUnauthorizedError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Unauthorized",
-      data: config?.data,
-      status: 401,
-    });
-  }
-}
-
-export class HttpForbiddenError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Forbidden",
-      data: config?.data,
-      status: 403,
-    });
-  }
-}
-
-export class HttpConflictError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Conflict",
-      data: config?.data,
-      status: 409,
-    });
-  }
-}
-
-export class HttpInternalServerError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Internal server error",
-      data: config?.data,
-      status: 500,
-    });
-  }
-}
-
-export class HttpUnprocessableEntityError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Unprocessable entity",
-      data: config?.data,
-      status: 422,
-    });
-  }
-}
-
-export class HttpTooManyRequestsError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Too many requests",
-      data: config?.data,
-      status: 429,
-    });
-  }
-}
-
-export class HttpServiceUnavailableError extends CustomError {
-  constructor(config?: Partial<Pick<ResponseConfig, "data" | "message">>) {
-    super({
-      message: config?.message || "Service unavailable",
-      data: config?.data,
-      status: 503,
-    });
-  }
 }
