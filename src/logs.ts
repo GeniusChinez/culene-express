@@ -167,3 +167,5 @@ export function createLogger(config?: {
     },
   };
 }
+
+export type Logger = ReturnType<typeof createLogger>;

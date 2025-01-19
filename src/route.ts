@@ -15,7 +15,7 @@ import { formatZodError } from "./validations";
 import { getDeviceId } from "./device";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
-import { createLogger } from "./logs";
+import { createLogger, Logger } from "./logs";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -68,12 +68,18 @@ type HasKeys<T> = keyof T extends never ? false : true;
 type InferUserType<UserSpec> =
   HasKeys<UserSpec> extends true
     ? UserSpec extends {
-        getCurrentUser: (request: Request) => Promise<infer UserT>;
+        getCurrentUser: (
+          request: Request,
+          logger?: Logger,
+        ) => Promise<infer UserT>;
         required: false;
       }
       ? UserT | undefined
       : UserSpec extends {
-            getCurrentUser: (request: Request) => Promise<infer UserT>;
+            getCurrentUser: (
+              request: Request,
+              logger?: Logger,
+            ) => Promise<infer UserT>;
           }
         ? UserT
         : never
@@ -134,7 +140,10 @@ export interface RouteConfig<
   user?: {
     [k in keyof UserSpec]: UserSpec[k];
   } & {
-    authorize?: (user: InferUserType<UserSpec>) => boolean | Promise<boolean>;
+    authorize?: (
+      user: InferUserType<UserSpec>,
+      logger?: Logger,
+    ) => boolean | Promise<boolean>;
   };
   input?: {
     query?: QuerySchema;
@@ -180,7 +189,7 @@ export function route<
         };
   },
   UserSpec extends {
-    getCurrentUser: (request: Request) => Promise<any>;
+    getCurrentUser: (request: Request, logger?: Logger) => Promise<any>;
     required?: boolean;
   },
 >(
@@ -317,7 +326,7 @@ export function route<
         user = await logger.asyncProcess(
           "Getting the user from the request",
           async () => {
-            return await configUser.getCurrentUser(req);
+            return await configUser.getCurrentUser(req, logger);
           },
         );
 
@@ -327,7 +336,7 @@ export function route<
 
           try {
             await logger.asyncProcess("Authorizing user", async () => {
-              const authorized = await authorizationCallback(user);
+              const authorized = await authorizationCallback(user, logger);
               if (!authorized) {
                 throw new Error("Authorization failed");
               }
