@@ -16,6 +16,7 @@ import { getDeviceId } from "./device";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
 import { createLogger, Logger } from "./logs";
+import { CustomError } from "./custom-error";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -338,7 +339,7 @@ export function route<
             await logger.asyncProcess("Authorizing user", async () => {
               const authorized = await authorizationCallback(user, logger);
               if (!authorized) {
-                throw new Error("Authorization failed");
+                throw new CustomError("Authorization failed");
               }
             });
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
