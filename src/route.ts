@@ -235,7 +235,7 @@ export function route<
           query = data;
         } catch (e) {
           logger.error(
-            `Invalid query parameters (${formatZodError(e as ZodError)})`,
+            `Invalid query parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
           );
           logger.sources.pop();
           return reportBadRequestError({
@@ -254,7 +254,9 @@ export function route<
           });
           body = data;
         } catch (e) {
-          logger.error(`Invalid body (${formatZodError(e as ZodError)})`);
+          logger.error(
+            `Invalid body (${JSON.stringify(formatZodError(e as ZodError))})`,
+          );
           logger.sources.pop();
           return reportBadRequestError({
             res,
@@ -276,7 +278,7 @@ export function route<
           params = data;
         } catch (e) {
           logger.error(
-            `Invalid path parameters (${formatZodError(e as ZodError)})`,
+            `Invalid path parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
           );
           logger.sources.pop();
           return reportBadRequestError({
@@ -295,7 +297,9 @@ export function route<
           });
           headers = data;
         } catch (e) {
-          logger.error(`Invalid headers (${formatZodError(e as ZodError)})`);
+          logger.error(
+            `Invalid headers (${JSON.stringify(formatZodError(e as ZodError))})`,
+          );
           logger.sources.pop();
           return reportBadRequestError({
             res,
