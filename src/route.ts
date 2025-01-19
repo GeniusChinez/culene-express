@@ -363,6 +363,7 @@ export function route<
             message: "Unauthenticated",
           });
         }
+        logger.info("User is not required for this route");
       }
     }
 
