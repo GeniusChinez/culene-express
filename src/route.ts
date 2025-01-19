@@ -239,7 +239,7 @@ export function route<
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid query parameters",
-            data: e instanceof ZodError ? formatZodError(e) : {},
+            data: formatZodError(e as ZodError),
           });
         }
       }
@@ -257,7 +257,7 @@ export function route<
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid body",
-            data: e instanceof ZodError ? formatZodError(e) : {},
+            data: formatZodError(e as ZodError),
           });
         }
       }
@@ -278,7 +278,7 @@ export function route<
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid path parameters",
-            data: e instanceof ZodError ? formatZodError(e) : {},
+            data: formatZodError(e as ZodError),
           });
         }
       }
@@ -296,7 +296,7 @@ export function route<
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid headers",
-            data: e instanceof ZodError ? formatZodError(e) : {},
+            data: formatZodError(e as ZodError),
           });
         }
       }
