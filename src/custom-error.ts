@@ -48,12 +48,12 @@ export class CustomError<
     },
   ) {
     this.status = config.status;
-    this.message = config.message || "Something went wrong";
+    this.message = config.message;
     this.data = "data" in config ? config.data : undefined;
     this.context = config.context;
   }
   status: ResponseStatus;
-  message: string;
+  message?: string;
   data?: any;
   context: HandlerArgs<
     QuerySchema,
