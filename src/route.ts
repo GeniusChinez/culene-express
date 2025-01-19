@@ -15,6 +15,7 @@ import { formatZodError } from "./validations";
 import { getDeviceId } from "./device";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
+import { createLogger } from "./logs";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -95,6 +96,7 @@ type HandlerArgs<
 > = {
   request: Request;
   response: Response;
+  logger: ReturnType<typeof createLogger>;
   query: z.infer<QuerySchema>;
   body: z.infer<BodySchema>;
   params: z.infer<ParamsSchema>;
@@ -202,6 +204,9 @@ export function route<
   ) => Promise<any>,
 ) {
   const handler = async (req: Request, res: Response) => {
+    const logger = createLogger();
+    logger.sources.push(`${req.ip} ${req.method.toUpperCase()} ${config.path}`);
+
     let query: any = undefined;
     let body: any = undefined;
     let params: any = undefined;
@@ -219,67 +224,174 @@ export function route<
 
     if (config.input) {
       if (config.input.query) {
-        const result = await config.input.query.safeParseAsync(req.query);
-        if (!result.success) {
+        const queryParams = config.input.query;
+
+        const { error, data } = await logger.asyncProcess(
+          "Validating query parameters",
+          async () => {
+            const result = await queryParams.safeParseAsync(req.query);
+            if (!result.success) {
+              return {
+                error: result.error,
+                data: undefined,
+              };
+            }
+            return {
+              error: undefined,
+              data: result.data,
+            };
+          },
+        );
+
+        if (error) {
+          logger.error(invalidInputMessage || "Invalid query parameters");
+          logger.sources.pop();
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid query parameters",
-            data: formatZodError(result.error),
+            data: formatZodError(error),
           });
         }
-        query = result.data;
+
+        query = data;
       }
 
       if (config.input.body) {
-        const result = await config.input.body.safeParseAsync(req.body);
-        if (!result.success) {
+        const bodyParams = config.input.body;
+        const { error, data } = await logger.asyncProcess(
+          "Validating body",
+          async () => {
+            const result = await bodyParams.safeParseAsync(req.body);
+            if (!result.success) {
+              return {
+                error: result.error,
+                data: undefined,
+              };
+            }
+            return {
+              error: undefined,
+              data: result.data,
+            };
+          },
+        );
+
+        if (error) {
+          logger.error(invalidInputMessage || "Invalid body");
+          logger.sources.pop();
           return reportBadRequestError({
             res,
-            message: invalidInputMessage || "Invalid input data",
-            data: formatZodError(result.error),
+            message: invalidInputMessage || "Invalid body",
+            data: formatZodError(error),
           });
         }
-        body = result.data;
+
+        body = data;
       }
 
       if (config.input.params) {
-        const result = await config.input.params.safeParseAsync(req.params);
-        if (!result.success) {
+        const pathParams = config.input.params;
+        const { error, data } = await logger.asyncProcess(
+          "Validating path params",
+          async () => {
+            const result = await pathParams.safeParseAsync(req.params);
+            if (!result.success) {
+              return {
+                error: result.error,
+                data: undefined,
+              };
+            }
+            return {
+              error: undefined,
+              data: result.data,
+            };
+          },
+        );
+
+        if (error) {
+          logger.error(invalidInputMessage || "Invalid path parameters");
+          logger.sources.pop();
           return reportBadRequestError({
             res,
-            message: invalidInputMessage || "Invalid input parameters",
-            data: formatZodError(result.error),
+            message: invalidInputMessage || "Invalid path parameters",
+            data: formatZodError(error),
           });
         }
-        params = result.data;
+
+        params = data;
       }
 
       if (config.input.headers) {
-        const result = await config.input.headers.safeParseAsync(req.headers);
-        if (!result.success) {
+        const headerParams = config.input.headers;
+        const { error, data } = await logger.asyncProcess(
+          "Validating headers",
+          async () => {
+            const result = await headerParams.safeParseAsync(req.headers);
+            if (!result.success) {
+              return {
+                error: result.error,
+                data: undefined,
+              };
+            }
+            return {
+              error: undefined,
+              data: result.data,
+            };
+          },
+        );
+
+        if (error) {
+          logger.error(invalidInputMessage || "Invalid headers");
+          logger.sources.pop();
           return reportBadRequestError({
             res,
-            message: invalidInputMessage || "Invalid input headers",
-            data: formatZodError(result.error),
+            message: invalidInputMessage || "Invalid headers",
+            data: formatZodError(error),
           });
         }
-        headers = result.data;
+
+        headers = data;
       }
     }
 
-    let user = undefined;
+    let user: any = undefined;
     if (config.user) {
+      const configUser = config.user;
       try {
-        user = await config.user.getCurrentUser(req);
-        if (config.user.authorize && !(await config.user.authorize(user))) {
-          return reportForbiddenError({
-            res,
-            message: "Authorization failed",
-          });
+        user = await logger.asyncProcess(
+          "Getting the user from the request",
+          async () => {
+            return await configUser.getCurrentUser(req);
+          },
+        );
+
+        if (configUser.authorize) {
+          logger.info("Additional authorization required");
+          const authorizationCallback = configUser.authorize;
+
+          try {
+            await logger.asyncProcess("Authorizing user", async () => {
+              const authorized = await authorizationCallback(user);
+              if (!authorized) {
+                throw new Error("Authorization failed");
+              }
+            });
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (e) {
+            logger.sources.pop();
+            return reportForbiddenError({
+              res,
+              message: "Authorization failed",
+            });
+          }
         }
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
       } catch (e) {
-        console.log(e);
+        logger.info("Checking to see if user is required for this route...");
         if (config.user.required !== false) {
+          logger.error(
+            "User is required for this route. Failed to get one from the request",
+          );
+          logger.sources.pop();
           return reportUnauthorizedError({
             res,
             message: "Unauthenticated",
@@ -299,6 +411,7 @@ export function route<
       request: req,
       response: res,
       user,
+      logger,
       device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
       respond(localConfig) {
         const errorMessage =
@@ -329,9 +442,14 @@ export function route<
     };
 
     try {
-      return await _handler(handlerArgs);
+      const result = await logger.asyncProcess("Running handler", async () => {
+        return await _handler(handlerArgs);
+      });
+      logger.sources.pop();
+      return result;
     } catch (e) {
-      console.log(e);
+      logger.error(`Something went wrong: ${e}`);
+      logger.sources.pop();
       return reportServerError({
         res,
         message: "Something went wrong",
