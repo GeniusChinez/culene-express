@@ -82,6 +82,7 @@ export function createLogger(config?: {
   const _processes = {
     start: (name: string) => {
       processes.push(name);
+      logger.info(`${sources.slice(-1)[0]}> ${name}`);
     },
     stop: (message?: string) => {
       const process =
