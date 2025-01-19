@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { z, ZodSchema, ZodType } from "zod";
+import { z, ZodError, ZodSchema, ZodType } from "zod";
 import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import {
@@ -225,131 +225,83 @@ export function route<
     if (config.input) {
       if (config.input.query) {
         const queryParams = config.input.query;
-
-        const { error, data } = await logger.asyncProcess(
-          "Validating query parameters",
-          async () => {
-            const result = await queryParams.safeParseAsync(req.query);
-            if (!result.success) {
-              return {
-                error: result.error,
-                data: undefined,
-              };
-            }
-            return {
-              error: undefined,
-              data: result.data,
-            };
-          },
-        );
-
-        if (error) {
+        try {
+          const { data } = await logger.process(
+            "Validating query parameters",
+            async () => {
+              return await queryParams.safeParseAsync(req.query);
+            },
+          );
+          query = data;
+        } catch (e) {
           logger.error(invalidInputMessage || "Invalid query parameters");
           logger.sources.pop();
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid query parameters",
-            data: formatZodError(error),
+            data: e instanceof ZodError ? formatZodError(e) : {},
           });
         }
-
-        query = data;
       }
 
       if (config.input.body) {
         const bodyParams = config.input.body;
-        const { error, data } = await logger.asyncProcess(
-          "Validating body",
-          async () => {
-            const result = await bodyParams.safeParseAsync(req.body);
-            if (!result.success) {
-              return {
-                error: result.error,
-                data: undefined,
-              };
-            }
-            return {
-              error: undefined,
-              data: result.data,
-            };
-          },
-        );
-
-        if (error) {
+        try {
+          const { data } = await logger.process("Validating body", async () => {
+            return await bodyParams.safeParseAsync(req.body);
+          });
+          body = data;
+        } catch (e) {
           logger.error(invalidInputMessage || "Invalid body");
           logger.sources.pop();
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid body",
-            data: formatZodError(error),
+            data: e instanceof ZodError ? formatZodError(e) : {},
           });
         }
-
-        body = data;
       }
 
       if (config.input.params) {
         const pathParams = config.input.params;
-        const { error, data } = await logger.asyncProcess(
-          "Validating path params",
-          async () => {
-            const result = await pathParams.safeParseAsync(req.params);
-            if (!result.success) {
-              return {
-                error: result.error,
-                data: undefined,
-              };
-            }
-            return {
-              error: undefined,
-              data: result.data,
-            };
-          },
-        );
-
-        if (error) {
+        try {
+          const { data } = await logger.process(
+            "Validating path parameters",
+            async () => {
+              return await pathParams.safeParseAsync(req.params);
+            },
+          );
+          params = data;
+        } catch (e) {
           logger.error(invalidInputMessage || "Invalid path parameters");
           logger.sources.pop();
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid path parameters",
-            data: formatZodError(error),
+            data: e instanceof ZodError ? formatZodError(e) : {},
           });
         }
-
-        params = data;
       }
 
       if (config.input.headers) {
         const headerParams = config.input.headers;
-        const { error, data } = await logger.asyncProcess(
-          "Validating headers",
-          async () => {
-            const result = await headerParams.safeParseAsync(req.headers);
-            if (!result.success) {
-              return {
-                error: result.error,
-                data: undefined,
-              };
-            }
-            return {
-              error: undefined,
-              data: result.data,
-            };
-          },
-        );
-
-        if (error) {
+        try {
+          const { data } = await logger.process(
+            "Validating headers",
+            async () => {
+              return await headerParams.safeParseAsync(req.headers);
+            },
+          );
+          headers = data;
+        } catch (e) {
           logger.error(invalidInputMessage || "Invalid headers");
           logger.sources.pop();
           return reportBadRequestError({
             res,
             message: invalidInputMessage || "Invalid headers",
-            data: formatZodError(error),
+            data: e instanceof ZodError ? formatZodError(e) : {},
           });
         }
-
-        headers = data;
       }
     }
 
