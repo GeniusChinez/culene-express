@@ -3,20 +3,19 @@
 import { z, ZodError, ZodSchema, ZodType } from "zod";
 import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
-import {
-  okResponse,
-  reportBadRequestError,
-  reportForbiddenError,
-  reportServerError,
-  reportUnauthorizedError,
-} from "./response";
+import { okResponse, reportServerError, respond } from "./response";
 import { Request, Response, Router } from "express";
 import { formatZodError } from "./validations";
 import { getDeviceId } from "./device";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
 import { createLogger, Logger } from "./logs";
-import { CustomError } from "./custom-error";
+import {
+  HttpBadRequestError,
+  HttpForbiddenError,
+  HttpUnauthorizedError,
+  isCustomError,
+} from "./custom-error";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -215,213 +214,219 @@ export function route<
 ) {
   const handler = async (req: Request, res: Response) => {
     const logger = createLogger();
-    logger.sources.push(`${req.ip} ${req.method.toUpperCase()} ${config.path}`);
+    try {
+      logger.sources.push(
+        `${req.ip} ${req.method.toUpperCase()} ${config.path}`,
+      );
 
-    let query: any = undefined;
-    let body: any = undefined;
-    let params: any = undefined;
-    let headers: any = undefined;
+      let query: any = undefined;
+      let body: any = undefined;
+      let params: any = undefined;
+      let headers: any = undefined;
 
-    const invalidInputMessage =
-      400 in config.response
-        ? typeof config.response[400] === "string"
-          ? config.response[400]
-          : typeof config.response[400] === "object" &&
-              "description" in (config.response as any)[400]
-            ? (config.response as any)[400].description
-            : ""
-        : undefined;
+      const invalidInputMessage =
+        400 in config.response
+          ? typeof config.response[400] === "string"
+            ? config.response[400]
+            : typeof config.response[400] === "object" &&
+                "description" in (config.response as any)[400]
+              ? (config.response as any)[400].description
+              : ""
+          : undefined;
 
-    if (config.input) {
-      if (config.input.query) {
-        const queryParams = config.input.query;
-        try {
-          const data = await logger.process(
-            "Validating query parameters",
-            async () => {
-              return await queryParams.parseAsync(req.query);
-            },
-          );
-          query = data;
-        } catch (e) {
-          logger.error(
-            `Invalid query parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
-          );
-          logger.sources.pop();
-          return reportBadRequestError({
-            res,
-            message: invalidInputMessage || "Invalid query parameters",
-            data: formatZodError(e as ZodError),
-          });
-        }
-      }
-
-      if (config.input.body) {
-        const bodyParams = config.input.body;
-        try {
-          const data = await logger.process("Validating body", async () => {
-            return await bodyParams.parseAsync(req.body);
-          });
-          body = data;
-        } catch (e) {
-          logger.error(
-            `Invalid body (${JSON.stringify(formatZodError(e as ZodError))})`,
-          );
-          logger.sources.pop();
-          return reportBadRequestError({
-            res,
-            message: invalidInputMessage || "Invalid body",
-            data: formatZodError(e as ZodError),
-          });
-        }
-      }
-
-      if (config.input.params) {
-        const pathParams = config.input.params;
-        try {
-          const data = await logger.process(
-            "Validating path parameters",
-            async () => {
-              return await pathParams.parseAsync(req.params);
-            },
-          );
-          params = data;
-        } catch (e) {
-          logger.error(
-            `Invalid path parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
-          );
-          logger.sources.pop();
-          return reportBadRequestError({
-            res,
-            message: invalidInputMessage || "Invalid path parameters",
-            data: formatZodError(e as ZodError),
-          });
-        }
-      }
-
-      if (config.input.headers) {
-        const headerParams = config.input.headers;
-        try {
-          const data = await logger.process("Validating headers", async () => {
-            return await headerParams.parseAsync(req.headers);
-          });
-          headers = data;
-        } catch (e) {
-          logger.error(
-            `Invalid headers (${JSON.stringify(formatZodError(e as ZodError))})`,
-          );
-          logger.sources.pop();
-          return reportBadRequestError({
-            res,
-            message: invalidInputMessage || "Invalid headers",
-            data: formatZodError(e as ZodError),
-          });
-        }
-      }
-    }
-
-    let user: any = undefined;
-    if (config.user) {
-      const configUser = config.user;
-      try {
-        user = await logger.asyncProcess(
-          "Getting the user from the request",
-          async () => {
-            return await configUser.getCurrentUser(req, logger);
-          },
-        );
-
-        if (configUser.authorize) {
-          logger.info("Additional authorization required");
-          const authorizationCallback = configUser.authorize;
-
+      if (config.input) {
+        if (config.input.query) {
+          const queryParams = config.input.query;
           try {
-            await logger.asyncProcess("Authorizing user", async () => {
-              const authorized = await authorizationCallback(user, logger);
-              if (!authorized) {
-                throw new CustomError("Authorization failed");
-              }
-            });
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const data = await logger.process(
+              "Validating query parameters",
+              async () => {
+                return await queryParams.parseAsync(req.query);
+              },
+            );
+            query = data;
           } catch (e) {
+            logger.error(
+              `Invalid query parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
+            );
             logger.sources.pop();
-            return reportForbiddenError({
-              res,
-              message: "Authorization failed",
+            throw new HttpBadRequestError({
+              message: invalidInputMessage || "Invalid query parameters",
+              data: formatZodError(e as ZodError),
             });
           }
         }
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      } catch (e) {
-        logger.info("Checking to see if user is required for this route...");
-        if (config.user.required !== false) {
-          logger.error(
-            "User is required for this route. Failed to get one from the request",
-          );
-          logger.sources.pop();
-          return reportUnauthorizedError({
-            res,
-            message: "Unauthenticated",
-          });
-        }
-        logger.info("User is not required for this route");
-      }
-    }
 
-    const handlerArgs: HandlerArgs<
-      QuerySchema,
-      ParamsSchema,
-      BodySchema,
-      HeadersSchema,
-      Responses,
-      UserSpec
-    > = {
-      request: req,
-      response: res,
-      user,
-      logger,
-      device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
-      respond(localConfig) {
-        const errorMessage =
-          localConfig.message ||
-          (typeof config.response[localConfig.status] === "string"
-            ? config.response[localConfig.status]
-            : typeof config.response[localConfig.status] === "object" &&
-                "description" in (config.response as any)[localConfig.status]
-              ? (config.response as any)[localConfig.status].description
-              : "");
-        res.status(localConfig.status as number).json(
-          "data" in localConfig
-            ? Array.isArray(localConfig.data)
-              ? localConfig.data
+        if (config.input.body) {
+          const bodyParams = config.input.body;
+          try {
+            const data = await logger.process("Validating body", async () => {
+              return await bodyParams.parseAsync(req.body);
+            });
+            body = data;
+          } catch (e) {
+            logger.error(
+              `Invalid body (${JSON.stringify(formatZodError(e as ZodError))})`,
+            );
+            logger.sources.pop();
+            throw new HttpBadRequestError({
+              message: invalidInputMessage || "Invalid body",
+              data: formatZodError(e as ZodError),
+            });
+          }
+        }
+
+        if (config.input.params) {
+          const pathParams = config.input.params;
+          try {
+            const data = await logger.process(
+              "Validating path parameters",
+              async () => {
+                return await pathParams.parseAsync(req.params);
+              },
+            );
+            params = data;
+          } catch (e) {
+            logger.error(
+              `Invalid path parameters (${JSON.stringify(formatZodError(e as ZodError))})`,
+            );
+            logger.sources.pop();
+            throw new HttpBadRequestError({
+              message: invalidInputMessage || "Invalid path parameters",
+              data: formatZodError(e as ZodError),
+            });
+          }
+        }
+
+        if (config.input.headers) {
+          const headerParams = config.input.headers;
+          try {
+            const data = await logger.process(
+              "Validating headers",
+              async () => {
+                return await headerParams.parseAsync(req.headers);
+              },
+            );
+            headers = data;
+          } catch (e) {
+            logger.error(
+              `Invalid headers (${JSON.stringify(formatZodError(e as ZodError))})`,
+            );
+            logger.sources.pop();
+            throw new HttpBadRequestError({
+              message: invalidInputMessage || "Invalid headers",
+              data: formatZodError(e as ZodError),
+            });
+          }
+        }
+      }
+
+      let user: any = undefined;
+      if (config.user) {
+        const configUser = config.user;
+        try {
+          user = await logger.asyncProcess(
+            "Getting the user from the request",
+            async () => {
+              return await configUser.getCurrentUser(req, logger);
+            },
+          );
+
+          if (configUser.authorize) {
+            logger.info("Additional authorization required");
+            const authorizationCallback = configUser.authorize;
+
+            try {
+              await logger.asyncProcess("Authorizing user", async () => {
+                const authorized = await authorizationCallback(user, logger);
+                if (!authorized) {
+                  throw new Error("Authorization failed");
+                }
+              });
+            } catch (e) {
+              logger.sources.pop();
+              if (isCustomError(e)) {
+                throw e;
+              }
+
+              throw new HttpForbiddenError({
+                message: "Authorization failed",
+              });
+            }
+          }
+        } catch (e) {
+          logger.info("Checking to see if user is required for this route...");
+          if (config.user.required !== false) {
+            logger.error(
+              "User is required for this route. Failed to get one from the request",
+            );
+
+            logger.sources.pop();
+            if (isCustomError(e)) {
+              throw e;
+            }
+            throw new HttpUnauthorizedError({
+              message: "Unauthenticated",
+            });
+          }
+          logger.info("User is not required for this route");
+        }
+      }
+
+      const handlerArgs: HandlerArgs<
+        QuerySchema,
+        ParamsSchema,
+        BodySchema,
+        HeadersSchema,
+        Responses,
+        UserSpec
+      > = {
+        request: req,
+        response: res,
+        user,
+        logger,
+        device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
+        respond(localConfig) {
+          const errorMessage =
+            localConfig.message ||
+            (typeof config.response[localConfig.status] === "string"
+              ? config.response[localConfig.status]
+              : typeof config.response[localConfig.status] === "object" &&
+                  "description" in (config.response as any)[localConfig.status]
+                ? (config.response as any)[localConfig.status].description
+                : "");
+          res.status(localConfig.status as number).json(
+            "data" in localConfig
+              ? Array.isArray(localConfig.data)
+                ? localConfig.data
+                : {
+                    message: errorMessage,
+                    ...localConfig.data,
+                  }
               : {
                   message: errorMessage,
-                  ...localConfig.data,
-                }
-            : {
-                message: errorMessage,
-              },
-        );
-      },
-      params: params as z.infer<ParamsSchema>,
-      body: body as z.infer<BodySchema>,
-      query: query as z.infer<QuerySchema>,
-      headers: headers as z.infer<HeadersSchema>,
-    };
+                },
+          );
+        },
+        params: params as z.infer<ParamsSchema>,
+        body: body as z.infer<BodySchema>,
+        query: query as z.infer<QuerySchema>,
+        headers: headers as z.infer<HeadersSchema>,
+      };
 
-    try {
       const result = await logger.asyncProcess("Running handler", async () => {
         return await _handler(handlerArgs);
       });
       logger.sources.pop();
       return result;
-    } catch (e) {
-      logger.error(`Something went wrong: ${e}`);
+    } catch (error) {
       logger.sources.pop();
-      return reportServerError({
-        res,
-        message: "Something went wrong",
-      });
+      return isCustomError(error)
+        ? respond({
+            res,
+            ...error,
+          })
+        : reportServerError({ res, message: "Something went wrong" });
     }
   };
 
