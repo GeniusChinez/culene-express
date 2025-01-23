@@ -1,9 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { z, ZodError, ZodSchema } from "zod";
-import { HandlerArgs, RouteConfig, ZodCompatible } from "./route.types";
+import {
+  action,
+  asyncAction,
+  FirstArgument,
+  HandlerArgs,
+  RouteConfig,
+  ZodCompatible,
+} from "./route.types";
 import { createLogger, Logger } from "./logs";
 import { Request, Response, Router } from "express";
-import { isCustomError } from "./custom-error";
+import { CustomError, isCustomError } from "./custom-error";
 import {
   okResponse,
   reportBadRequestError,
@@ -220,6 +227,40 @@ export function route<
         }
       }
 
+      function respond(
+        localConfig: FirstArgument<
+          HandlerArgs<
+            QuerySchema,
+            ParamsSchema,
+            BodySchema,
+            HeadersSchema,
+            Responses,
+            UserSpec
+          >["respond"]
+        >,
+      ) {
+        const errorMessage =
+          localConfig.message ||
+          (typeof config.response[localConfig.status] === "string"
+            ? config.response[localConfig.status]
+            : typeof config.response[localConfig.status] === "object" &&
+                "description" in (config.response as any)[localConfig.status]
+              ? (config.response as any)[localConfig.status].description
+              : "");
+        res.status(localConfig.status as number).json(
+          "data" in localConfig
+            ? Array.isArray(localConfig.data)
+              ? localConfig.data
+              : {
+                  message: errorMessage,
+                  ...localConfig.data,
+                }
+            : {
+                message: errorMessage,
+              },
+        );
+      }
+
       const handlerArgs: HandlerArgs<
         QuerySchema,
         ParamsSchema,
@@ -234,28 +275,48 @@ export function route<
         user,
         logger,
         device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
-        respond(localConfig) {
-          const errorMessage =
-            localConfig.message ||
-            (typeof config.response[localConfig.status] === "string"
-              ? config.response[localConfig.status]
-              : typeof config.response[localConfig.status] === "object" &&
-                  "description" in (config.response as any)[localConfig.status]
-                ? (config.response as any)[localConfig.status].description
-                : "");
-          res.status(localConfig.status as number).json(
-            "data" in localConfig
-              ? Array.isArray(localConfig.data)
-                ? localConfig.data
-                : {
-                    message: errorMessage,
-                    ...localConfig.data,
-                  }
-              : {
-                  message: errorMessage,
-                },
-          );
+        fail(args) {
+          throw new CustomError({
+            ...args,
+            context: {
+              responses: config.response,
+              respond,
+            },
+          });
         },
+        action: <
+          Returns = void,
+          OnErrorResult = never,
+          OnSuccessResult = void,
+        >(args: {
+          name: string;
+          exec: () => Returns;
+          onError?: (error: unknown) => OnErrorResult;
+          onSuccess?: (result: Returns) => OnSuccessResult;
+        }) => {
+          return logger.process(args.name, () => {
+            return action<Returns, OnErrorResult, OnSuccessResult>(args);
+          });
+        },
+        asyncAction: async <
+          Returns = void,
+          OnErrorResult = never,
+          OnSuccessResult = void,
+        >(args: {
+          name: string;
+          exec: () => Promise<Returns> | Returns;
+          onError?: (error: unknown) => Promise<OnErrorResult> | OnErrorResult;
+          onSuccess?: (
+            result: Returns,
+          ) => Promise<OnSuccessResult> | OnSuccessResult;
+        }) => {
+          return await logger.asyncProcess(args.name, async () => {
+            return await asyncAction<Returns, OnErrorResult, OnSuccessResult>(
+              args,
+            );
+          });
+        },
+        respond,
         params: params as z.infer<ParamsSchema>,
         body: body as z.infer<BodySchema>,
         query: query as z.infer<QuerySchema>,

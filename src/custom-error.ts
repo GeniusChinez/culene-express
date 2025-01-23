@@ -2,7 +2,7 @@
 import { ZodSchema } from "zod";
 import { HandlerArgs, ResponseConfig, ZodCompatible } from "./route.types";
 
-type CustomErrorConfig<
+export type CustomErrorConfig<
   Responses extends {
     [key: number]:
       | string
@@ -37,13 +37,16 @@ export class CustomError<
 > {
   constructor(
     config: CustomErrorConfig<Responses, ResponseStatus> & {
-      context: HandlerArgs<
-        QuerySchema,
-        ParamsSchema,
-        BodySchema,
-        HeadersSchema,
-        Responses,
-        UserSpec
+      context: Pick<
+        HandlerArgs<
+          QuerySchema,
+          ParamsSchema,
+          BodySchema,
+          HeadersSchema,
+          Responses,
+          UserSpec
+        >,
+        "responses" | "respond"
       >;
     },
   ) {
@@ -66,13 +69,16 @@ export class CustomError<
   status: ResponseStatus;
   message?: string;
   data?: any;
-  context: HandlerArgs<
-    QuerySchema,
-    ParamsSchema,
-    BodySchema,
-    HeadersSchema,
-    Responses,
-    UserSpec
+  context: Pick<
+    HandlerArgs<
+      QuerySchema,
+      ParamsSchema,
+      BodySchema,
+      HeadersSchema,
+      Responses,
+      UserSpec
+    >,
+    "responses" | "respond"
   >;
 }
 

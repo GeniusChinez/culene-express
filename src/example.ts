@@ -76,6 +76,20 @@ export const createUsers = route(
       });
     }
 
+    const result = await context.asyncAction({
+      name: "createUser",
+      exec() {
+        return "123";
+      },
+      // async onSuccess(temp) {
+      //   return Number(temp);
+      // },
+      async onError(error) {
+        console.log(error);
+      },
+    });
+    console.log(result);
+
     return context.respond({
       status: 200,
       data: {
@@ -83,7 +97,7 @@ export const createUsers = route(
         id: "something",
       },
       headers: {
-        // this is also validated to match what was specified in teh config
+        // this is also validated to match what was specified in teh confi
         secret: "things",
       },
     });

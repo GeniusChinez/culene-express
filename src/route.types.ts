@@ -5,10 +5,13 @@ import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import { Request, Response, Router } from "express";
 import { createLogger, Logger } from "./logs";
+import { CustomErrorConfig } from "./custom-error";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
   T extends ZodSchema<any> ? T : ZodType<any, any, any>;
+
+export type FirstArgument<F extends (...args: any[]) => any> = Parameters<F>[0];
 
 export type GetResponseDataSchema<T> = T extends string
   ? never
@@ -74,6 +77,78 @@ type InferUserType<UserSpec> =
         : never
     : never;
 
+export function action<
+  Returns = void,
+  OnErrorResult = never,
+  OnSuccessResult = void,
+>(args: {
+  name: string;
+  exec: () => Returns;
+  onError?: (error: unknown) => OnErrorResult;
+  onSuccess?: (result: Returns) => OnSuccessResult;
+}) {
+  const result = (() => {
+    try {
+      const temp = (() => {
+        const result = args.exec();
+        if (args.onSuccess) {
+          return args.onSuccess(result);
+        }
+        return result;
+      })();
+      return temp as OnSuccessResult extends void ? Returns : OnSuccessResult;
+    } catch (error) {
+      if (args.onError) {
+        return args.onError(error) as OnErrorResult extends never
+          ? never
+          : OnErrorResult extends undefined
+            ? undefined
+            : OnErrorResult extends void
+              ? undefined
+              : OnErrorResult;
+      }
+      throw error;
+    }
+  })();
+  return result;
+}
+
+export async function asyncAction<
+  Returns = void,
+  OnErrorResult = never,
+  OnSuccessResult = void,
+>(args: {
+  name: string;
+  exec: () => Promise<Returns> | Returns;
+  onError?: (error: unknown) => Promise<OnErrorResult> | OnErrorResult;
+  onSuccess?: (result: Returns) => Promise<OnSuccessResult> | OnSuccessResult;
+}) {
+  const result = await (async () => {
+    try {
+      const temp = await (async () => {
+        const result = await args.exec();
+        if (args.onSuccess) {
+          return await args.onSuccess(result);
+        }
+        return result;
+      })();
+      return temp as OnSuccessResult extends void ? Returns : OnSuccessResult;
+    } catch (error) {
+      if (args.onError) {
+        return (await args.onError(error)) as OnErrorResult extends never
+          ? never
+          : OnErrorResult extends undefined
+            ? undefined
+            : OnErrorResult extends void
+              ? undefined
+              : OnErrorResult;
+      }
+      throw error;
+    }
+  })();
+  return result;
+}
+
 export type HandlerArgs<
   QuerySchema extends ZodCompatible<ZodSchema<any>>,
   ParamsSchema extends ZodCompatible<ZodSchema<any>>,
@@ -104,6 +179,11 @@ export type HandlerArgs<
   device: string;
   responses: Responses;
   user: InferUserType<UserSpec>;
+  action: typeof action;
+  asyncAction: typeof asyncAction;
+  fail: <ResponseStatus extends keyof Responses>(
+    args: CustomErrorConfig<Responses, ResponseStatus>,
+  ) => void;
 };
 
 export interface RouteConfig<
