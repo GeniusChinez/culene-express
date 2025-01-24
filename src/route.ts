@@ -353,6 +353,10 @@ export function route<
           ? {
               badRequest: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 400,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -365,6 +369,10 @@ export function route<
           ? {
               unauthorized: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 401,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -377,6 +385,10 @@ export function route<
           ? {
               forbidden: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 403,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -389,6 +401,10 @@ export function route<
           ? {
               notFound: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 404,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -401,6 +417,10 @@ export function route<
           ? {
               methodNotAllowed: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 405,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -413,6 +433,10 @@ export function route<
           ? {
               conflict: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 409,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -425,6 +449,10 @@ export function route<
           ? {
               unprocessableEntity: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 422,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -437,6 +465,10 @@ export function route<
           ? {
               tooManyRequests: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 429,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -449,6 +481,10 @@ export function route<
           ? {
               serverError: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 500,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -461,6 +497,10 @@ export function route<
           ? {
               badGateway: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 502,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -473,6 +513,10 @@ export function route<
           ? {
               serviceUnavailable: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 503,
                   ...(typeof res === "string"
                     ? { message: res }
@@ -485,6 +529,10 @@ export function route<
           ? {
               gatewayTimeout: (res: unknown) => {
                 throw new CustomError({
+                  context: {
+                    responses: config.response,
+                    respond,
+                  },
                   status: 504,
                   ...(typeof res === "string"
                     ? { message: res }
