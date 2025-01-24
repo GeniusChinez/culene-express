@@ -261,6 +261,240 @@ export function route<
         );
       }
 
+      const answer = {
+        ...(200 in config.response
+          ? {
+              ok: (res: unknown) => {
+                return respond({
+                  status: 200,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(201 in config.response
+          ? {
+              created: (res: unknown) => {
+                return respond({
+                  status: 201,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(202 in config.response
+          ? {
+              accepted: (res: unknown) => {
+                return respond({
+                  status: 202,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(204 in config.response
+          ? {
+              noContent: (res: unknown) => {
+                return respond({
+                  status: 204,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(301 in config.response
+          ? {
+              movedPermanently: (res: unknown) => {
+                return respond({
+                  status: 301,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(302 in config.response
+          ? {
+              found: (res: unknown) => {
+                return respond({
+                  status: 302,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(304 in config.response
+          ? {
+              notModified: (res: unknown) => {
+                return respond({
+                  status: 304,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+      };
+
+      const fatal = {
+        ...(400 in config.response
+          ? {
+              badRequest: (res: unknown) => {
+                throw new CustomError({
+                  status: 400,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(401 in config.response
+          ? {
+              unauthorized: (res: unknown) => {
+                throw new CustomError({
+                  status: 401,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(403 in config.response
+          ? {
+              forbidden: (res: unknown) => {
+                throw new CustomError({
+                  status: 403,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(404 in config.response
+          ? {
+              notFound: (res: unknown) => {
+                throw new CustomError({
+                  status: 404,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(405 in config.response
+          ? {
+              methodNotAllowed: (res: unknown) => {
+                throw new CustomError({
+                  status: 405,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(409 in config.response
+          ? {
+              conflict: (res: unknown) => {
+                throw new CustomError({
+                  status: 409,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(422 in config.response
+          ? {
+              unprocessableEntity: (res: unknown) => {
+                throw new CustomError({
+                  status: 422,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(429 in config.response
+          ? {
+              tooManyRequests: (res: unknown) => {
+                throw new CustomError({
+                  status: 429,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(500 in config.response
+          ? {
+              serverError: (res: unknown) => {
+                throw new CustomError({
+                  status: 500,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(502 in config.response
+          ? {
+              badGateway: (res: unknown) => {
+                throw new CustomError({
+                  status: 502,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(503 in config.response
+          ? {
+              serviceUnavailable: (res: unknown) => {
+                throw new CustomError({
+                  status: 503,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+        ...(504 in config.response
+          ? {
+              gatewayTimeout: (res: unknown) => {
+                throw new CustomError({
+                  status: 504,
+                  ...(typeof res === "string"
+                    ? { message: res }
+                    : (res as any)),
+                });
+              },
+            }
+          : {}),
+      };
+
       const handlerArgs: HandlerArgs<
         QuerySchema,
         ParamsSchema,
@@ -275,15 +509,6 @@ export function route<
         user,
         logger,
         device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
-        fail(args) {
-          throw new CustomError({
-            ...args,
-            context: {
-              responses: config.response,
-              respond,
-            },
-          });
-        },
         action: <
           Returns = void,
           OnErrorResult = never,
@@ -317,6 +542,8 @@ export function route<
           });
         },
         respond,
+        answer: answer as any,
+        fatal: fatal as any,
         params: params as z.infer<ParamsSchema>,
         body: body as z.infer<BodySchema>,
         query: query as z.infer<QuerySchema>,

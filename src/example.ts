@@ -50,7 +50,9 @@ export const createUsers = route(
           secret: z.string(),
         }),
       },
-      403: "User already logged in",
+      403: {
+        description: "User already logged in",
+      },
     },
     docs: {
       body: {
@@ -70,10 +72,7 @@ export const createUsers = route(
     // note: "context.user" will not be available if the "user" key is not specified in the config
     if (context.user) {
       console.log(`${context.user.fullName} already logged in`);
-      return context.respond({
-        status: 403, // all status codes specified in "respond" must have been documented in the config
-        message: "Please log out, human",
-      });
+      return context.fatal.forbidden("Please log out, human");
     }
 
     const result = await context.asyncAction({
@@ -88,7 +87,19 @@ export const createUsers = route(
         console.log(error);
       },
     });
+
     console.log(result);
+    context.fatal.forbidden();
+
+    context.answer.ok({
+      data: {
+        id: "soemthing",
+      },
+      headers: {
+        secret: "...",
+      },
+      message: "...",
+    });
 
     return context.respond({
       status: 200,

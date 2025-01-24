@@ -5,7 +5,6 @@ import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import { Request, Response, Router } from "express";
 import { createLogger, Logger } from "./logs";
-import { CustomErrorConfig } from "./custom-error";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -54,7 +53,7 @@ export type GetHeadersEntry<Schema> =
 export type ResponseConfig<Schema> = keyof (GetDataEntry<Schema> &
   GetHeadersEntry<Schema>) extends never
   ? object
-  : GetDataEntry<Schema> & GetHeadersEntry<Schema>;
+  : GetDataEntry<Schema> & GetHeadersEntry<Schema> & { message?: string };
 
 type HasKeys<T> = keyof T extends never ? false : true;
 type InferUserType<UserSpec> =
@@ -149,6 +148,62 @@ export async function asyncAction<
   return result;
 }
 
+type IsConfigRequired<Schema> = keyof ResponseConfig<Schema> extends never
+  ? false
+  : true;
+
+type AnswerFunctionConfig<Responses extends Record<number, any>> = {
+  [Code in keyof Responses & number as Code extends 200
+    ? "ok"
+    : Code extends 201
+      ? "created"
+      : Code extends 202
+        ? "accepted"
+        : Code extends 204
+          ? "noContent"
+          : Code extends 301
+            ? "movedPermanently"
+            : Code extends 302
+              ? "found"
+              : Code extends 304
+                ? "notModified"
+                : never]: IsConfigRequired<Responses[Code]> extends true
+    ? (config: ResponseConfig<Responses[Code]>) => void
+    : (message?: string) => void;
+};
+
+type FatalFunctionConfig<Responses extends Record<number, any>> = {
+  [Code in keyof Responses & number as Code extends 400
+    ? "badRequest"
+    : Code extends 401
+      ? "unauthorized"
+      : Code extends 403
+        ? "forbidden"
+        : Code extends 404
+          ? "notFound"
+          : Code extends 405
+            ? "methodNotAllowed"
+            : Code extends 409
+              ? "conflict"
+              : Code extends 422
+                ? "unprocessableEntity"
+                : Code extends 429
+                  ? "tooManyRequests"
+                  : Code extends 500
+                    ? "serverError"
+                    : Code extends 502
+                      ? "badGateway"
+                      : Code extends 503
+                        ? "serviceUnavailable"
+                        : Code extends 504
+                          ? "gatewayTimeout"
+                          : never]: IsConfigRequired<
+    Responses[Code]
+  > extends true
+    ? (config: ResponseConfig<Responses[Code]>) => void
+    : (message?: string) => void;
+};
+
 export type HandlerArgs<
   QuerySchema extends ZodCompatible<ZodSchema<any>>,
   ParamsSchema extends ZodCompatible<ZodSchema<any>>,
@@ -176,14 +231,13 @@ export type HandlerArgs<
       Responses[ResponseStatus]
     >,
   ) => void;
+  answer: AnswerFunctionConfig<Responses>;
+  fatal: FatalFunctionConfig<Responses>;
   device: string;
   responses: Responses;
   user: InferUserType<UserSpec>;
   action: typeof action;
   asyncAction: typeof asyncAction;
-  fail: <ResponseStatus extends keyof Responses>(
-    args: CustomErrorConfig<Responses, ResponseStatus>,
-  ) => void;
 };
 
 export interface RouteConfig<
