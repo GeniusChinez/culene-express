@@ -625,7 +625,10 @@ export function route<
 
     // Query parameters
     if (input?.query) {
-      const json = zodToJsonSchema(input.query);
+      const json = zodToJsonSchema(input.query, {
+        // target: "openApi3",
+        $refStrategy: "none",
+      });
       if ("properties" in json) {
         Object.entries(json.properties).forEach(([key, details]) => {
           const otherDocs = query ? query[key] : {};
