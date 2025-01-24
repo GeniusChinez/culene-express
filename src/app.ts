@@ -195,6 +195,7 @@ export async function createApp(config: AppConfig): Promise<{
             defaultModelsExpandDepth: -1, // Prevent models from expanding
             defaultTagsExpandDepth: 0, // Collapse all tag sections by default
             docExpansion: "none", // Collapse all sections by default
+            filter: true,
           },
           customSiteTitle: config.title,
         }),
