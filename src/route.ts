@@ -647,7 +647,10 @@ export function route<
 
     // Path parameters
     if (input?.params) {
-      const json = zodToJsonSchema(input.params);
+      const json = zodToJsonSchema(input.params, {
+        // target: "openApi3",
+        $refStrategy: "none",
+      });
       if ("properties" in json) {
         Object.entries(json.properties).forEach(([key, details]) => {
           const otherDocs = params ? params[key] : {};
@@ -666,7 +669,10 @@ export function route<
 
     // Body parameters
     if (input?.body) {
-      const json = zodToJsonSchema(input.body);
+      const json = zodToJsonSchema(input.body, {
+        // target: "openApi3",
+        $refStrategy: "none",
+      });
       if ("properties" in json) {
         const properties = { ...json.properties } as any;
         Object.entries(properties).forEach(([key, details]) => {
@@ -693,7 +699,10 @@ export function route<
 
     // Headers
     if (input?.headers) {
-      const json = zodToJsonSchema(input.headers);
+      const json = zodToJsonSchema(input.headers, {
+        // target: "openApi3",
+        $refStrategy: "none",
+      });
       if ("properties" in json) {
         Object.entries(json.properties).forEach(([key, details]) => {
           const otherDocs = headers ? headers[key] : {};
