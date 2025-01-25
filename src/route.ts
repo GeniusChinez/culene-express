@@ -755,11 +755,11 @@ export function route<
       );
     });
 
-    router.get(`${config.path}/docs`, (req, res) => {
+    router.get(`${config.path}/spec`, (req, res) => {
       okResponse({ res, data: getOpenApiSpec() });
     });
 
-    router.get(`${config.path}/html-docs`, (req, res) => {
+    router.get(`${config.path}/docs`, (req, res) => {
       try {
         const spec = getOpenApiSpec();
         const htmlOutput = generateHtmlFromOpenAPISpec(spec as any);
