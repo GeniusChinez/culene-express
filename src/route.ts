@@ -627,7 +627,7 @@ export function route<
     // Query parameters
     if (input?.query) {
       const _json = zodToJsonSchema(inlineNestedSchemas(input.query), {
-        target: "openApi3",
+        // target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
       });
@@ -655,7 +655,7 @@ export function route<
     // Path parameters
     if (input?.params) {
       const _json = zodToJsonSchema(inlineNestedSchemas(input.params), {
-        target: "openApi3",
+        // target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
       });
@@ -683,7 +683,7 @@ export function route<
     // Body parameters
     if (input?.body) {
       const _json = zodToJsonSchema(inlineNestedSchemas(input.body), {
-        target: "openApi3",
+        // target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
       });
@@ -719,7 +719,7 @@ export function route<
     // Headers
     if (input?.headers) {
       const _json = zodToJsonSchema(inlineNestedSchemas(input.headers), {
-        target: "openApi3",
+        // target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
       });
@@ -755,7 +755,14 @@ export function route<
           content: resDetails.data
             ? {
                 "application/json": {
-                  schema: zodToJsonSchema(resDetails.data),
+                  schema: zodToJsonSchema(
+                    inlineNestedSchemas(resDetails.data),
+                    {
+                      // target: "openApi3",
+                      $refStrategy: "none",
+                      effectStrategy: "input", // Optional: Handle transformations
+                    },
+                  ),
                 },
               }
             : undefined,
