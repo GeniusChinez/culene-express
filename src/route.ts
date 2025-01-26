@@ -22,6 +22,7 @@ import zodToJsonSchema, { JsonSchema7ObjectType } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
 import { getDeviceId } from "./device";
 import { formatZodError } from "./validations";
+import { inlineNestedSchemas } from "./inline-schemas";
 
 export function route<
   QuerySchema extends ZodCompatible<ZodSchema<any>>,
@@ -625,7 +626,7 @@ export function route<
 
     // Query parameters
     if (input?.query) {
-      const _json = zodToJsonSchema(input.query, {
+      const _json = zodToJsonSchema(inlineNestedSchemas(input.query), {
         target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
@@ -653,7 +654,7 @@ export function route<
 
     // Path parameters
     if (input?.params) {
-      const _json = zodToJsonSchema(input.params, {
+      const _json = zodToJsonSchema(inlineNestedSchemas(input.params), {
         target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
@@ -681,7 +682,7 @@ export function route<
 
     // Body parameters
     if (input?.body) {
-      const _json = zodToJsonSchema(input.body, {
+      const _json = zodToJsonSchema(inlineNestedSchemas(input.body), {
         target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
@@ -717,7 +718,7 @@ export function route<
 
     // Headers
     if (input?.headers) {
-      const _json = zodToJsonSchema(input.headers, {
+      const _json = zodToJsonSchema(inlineNestedSchemas(input.headers), {
         target: "openApi3",
         $refStrategy: "none",
         effectStrategy: "input", // Optional: Handle transformations
