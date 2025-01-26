@@ -626,10 +626,14 @@ export function route<
     // Query parameters
     if (input?.query) {
       const json = zodToJsonSchema(input.query, {
-        // target: "openApi3",
+        target: "openApi3",
         $refStrategy: "none",
       });
-      if ("properties" in json) {
+      if (
+        "properties" in json &&
+        json.properties &&
+        typeof json.properties === "object"
+      ) {
         Object.entries(json.properties).forEach(([key, details]) => {
           const otherDocs = query ? query[key] : {};
           spec.parameters.push({
@@ -637,7 +641,7 @@ export function route<
             in: "query",
             description:
               (otherDocs as any)?.description || "No description provided",
-            required: json.required?.includes(key) || false,
+            required: (json as any).required?.includes(key) || false,
             example: (otherDocs as any)?.example,
             schema: details,
           });
