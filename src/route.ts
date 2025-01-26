@@ -786,22 +786,22 @@ export function route<
         ...middleware,
         handler,
       );
-    });
 
-    router.get(`${config.path}/spec`, (req, res) => {
-      okResponse({ res, data: getOpenApiSpec() });
-    });
+      router.get(`${config.path}/spec/${method.toLowerCase()}`, (req, res) => {
+        okResponse({ res, data: getOpenApiSpec() });
+      });
 
-    router.get(`${config.path}/docs`, (req, res) => {
-      try {
-        const spec = getOpenApiSpec();
-        const htmlOutput = generateHtmlFromOpenAPISpec(spec as any);
-        res.setHeader("Content-Type", "text/html");
-        res.send(htmlOutput);
-      } catch (error) {
-        console.error("Error generating docs:", error);
-        res.status(500).send("Error generating documentation");
-      }
+      router.get(`${config.path}/docs/${method.toLowerCase()}`, (req, res) => {
+        try {
+          const spec = getOpenApiSpec();
+          const htmlOutput = generateHtmlFromOpenAPISpec(spec as any);
+          res.setHeader("Content-Type", "text/html");
+          res.send(htmlOutput);
+        } catch (error) {
+          console.error("Error generating docs:", error);
+          res.status(500).send("Error generating documentation");
+        }
+      });
     });
   };
 
