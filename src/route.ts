@@ -18,7 +18,7 @@ import {
   reportServerError,
   reportUnauthorizedError,
 } from "./response";
-import zodToJsonSchema from "zod-to-json-schema";
+import zodToJsonSchema, { JsonSchema7ObjectType } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
 import { getDeviceId } from "./device";
 import { formatZodError } from "./validations";
@@ -625,15 +625,17 @@ export function route<
 
     // Query parameters
     if (input?.query) {
-      const json = zodToJsonSchema(input.query, {
+      const _json = zodToJsonSchema(input.query, {
         target: "openApi3",
         $refStrategy: "none",
+        effectStrategy: "input", // Optional: Handle transformations
       });
       if (
-        "properties" in json &&
-        json.properties &&
-        typeof json.properties === "object"
+        "properties" in _json &&
+        _json.properties &&
+        typeof _json.properties === "object"
       ) {
+        const json = _json as JsonSchema7ObjectType;
         Object.entries(json.properties).forEach(([key, details]) => {
           const otherDocs = query ? query[key] : {};
           spec.parameters.push({
@@ -641,7 +643,7 @@ export function route<
             in: "query",
             description:
               (otherDocs as any)?.description || "No description provided",
-            required: (json as any).required?.includes(key) || false,
+            required: json.required?.includes(key) || false,
             example: (otherDocs as any)?.example,
             schema: details,
           });
@@ -651,11 +653,17 @@ export function route<
 
     // Path parameters
     if (input?.params) {
-      const json = zodToJsonSchema(input.params, {
-        // target: "openApi3",
+      const _json = zodToJsonSchema(input.params, {
+        target: "openApi3",
         $refStrategy: "none",
+        effectStrategy: "input", // Optional: Handle transformations
       });
-      if ("properties" in json) {
+      if (
+        "properties" in _json &&
+        _json.properties &&
+        typeof _json.properties === "object"
+      ) {
+        const json = _json as JsonSchema7ObjectType;
         Object.entries(json.properties).forEach(([key, details]) => {
           const otherDocs = params ? params[key] : {};
           spec.parameters.push({
@@ -673,11 +681,17 @@ export function route<
 
     // Body parameters
     if (input?.body) {
-      const json = zodToJsonSchema(input.body, {
-        // target: "openApi3",
+      const _json = zodToJsonSchema(input.body, {
+        target: "openApi3",
         $refStrategy: "none",
+        effectStrategy: "input", // Optional: Handle transformations
       });
-      if ("properties" in json) {
+      if (
+        "properties" in _json &&
+        _json.properties &&
+        typeof _json.properties === "object"
+      ) {
+        const json = _json as JsonSchema7ObjectType;
         const properties = { ...json.properties } as any;
         Object.entries(properties).forEach(([key, details]) => {
           const otherDocs = body ? body[key] : {};
@@ -703,11 +717,18 @@ export function route<
 
     // Headers
     if (input?.headers) {
-      const json = zodToJsonSchema(input.headers, {
-        // target: "openApi3",
+      const _json = zodToJsonSchema(input.headers, {
+        target: "openApi3",
         $refStrategy: "none",
+        effectStrategy: "input", // Optional: Handle transformations
       });
-      if ("properties" in json) {
+
+      if (
+        "properties" in _json &&
+        _json.properties &&
+        typeof _json.properties === "object"
+      ) {
+        const json = _json as JsonSchema7ObjectType;
         Object.entries(json.properties).forEach(([key, details]) => {
           const otherDocs = headers ? headers[key] : {};
           spec.parameters.push({
