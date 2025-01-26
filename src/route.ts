@@ -787,11 +787,11 @@ export function route<
         handler,
       );
 
-      router.get(`${config.path}/spec/${method.toLowerCase()}`, (req, res) => {
+      router.get(`${config.path}-spec/${method.toLowerCase()}`, (req, res) => {
         okResponse({ res, data: getOpenApiSpec() });
       });
 
-      router.get(`${config.path}/docs/${method.toLowerCase()}`, (req, res) => {
+      router.get(`${config.path}-docs/${method.toLowerCase()}`, (req, res) => {
         try {
           const spec = getOpenApiSpec();
           const htmlOutput = generateHtmlFromOpenAPISpec(spec as any);
