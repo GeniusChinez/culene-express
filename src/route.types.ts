@@ -6,6 +6,7 @@ import { Middleware } from "./middleware";
 import { Request, Response, Router } from "express";
 import { createLogger, Logger } from "./logs";
 import { getDeviceId } from "./device";
+import { Options as RateLimitingOptions } from "express-rate-limit";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -271,6 +272,7 @@ export interface RouteConfig<
       logger: Logger,
     ) => boolean | Promise<boolean>;
   };
+  rateLimiting?: Partial<RateLimitingOptions>;
   input?: {
     query?: QuerySchema;
     params?: ParamsSchema;

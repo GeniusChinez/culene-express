@@ -11,6 +11,7 @@ import {
 import { createLogger, Logger } from "./logs";
 import { Request, Response, Router } from "express";
 import { CustomError, isCustomError } from "./custom-error";
+import rateLimit from "express-rate-limit";
 import {
   okResponse,
   reportBadRequestError,
@@ -782,9 +783,14 @@ export function route<
 
   const attachToRouter = (router: Router) => {
     config.methods.forEach((method) => {
+      const allMiddleware = [
+        ...middleware,
+        ...(config.rateLimiting ? [rateLimit(config.rateLimiting)] : []),
+      ];
+
       (router as any)[method.toLowerCase()](
         config.path,
-        ...middleware,
+        ...allMiddleware,
         handler,
       );
 
