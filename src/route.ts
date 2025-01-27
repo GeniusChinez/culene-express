@@ -8,22 +8,24 @@ import {
   RouteConfig,
   ZodCompatible,
 } from "./route.types";
-import { createLogger, Logger } from "./logs";
-import { Request, Response, Router } from "express";
+import { createLogger } from "./logs";
+import { NextFunction, Request, Response, Router } from "express";
 import { CustomError, isCustomError } from "./custom-error";
-import rateLimit, { Options } from "express-rate-limit";
+import rateLimit from "express-rate-limit";
 import {
   okResponse,
   reportBadRequestError,
   reportForbiddenError,
   reportServerError,
   reportUnauthorizedError,
+  respond,
 } from "./response";
 import zodToJsonSchema, { JsonSchema7ObjectType } from "zod-to-json-schema";
 import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
 import { getDeviceId } from "./device";
 import { formatZodError } from "./validations";
 import { inlineNestedSchemas } from "./inline-schemas";
+import { getRateLimitingOptions } from "./rate-limiting";
 
 export function route<
   QuerySchema extends ZodCompatible<ZodSchema<any>>,
@@ -40,7 +42,7 @@ export function route<
         };
   },
   UserSpec extends {
-    getCurrentUser: (request: Request, logger: Logger) => Promise<any>;
+    getCurrentUser: (request: Request) => Promise<any>;
     required?: boolean;
   },
 >(
@@ -63,6 +65,56 @@ export function route<
     >,
   ) => Promise<any>,
 ) {
+  const authenticationMiddleware = async (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
+    let user: any = undefined;
+    if (config.user) {
+      const configUser = config.user;
+      try {
+        user = await configUser.getCurrentUser(req);
+
+        if (configUser.authorize) {
+          const authorizationCallback = configUser.authorize;
+
+          try {
+            const authorized = await authorizationCallback(user);
+            if (!authorized) {
+              throw new Error("Authorization failed");
+            }
+          } catch (e) {
+            if (isCustomError(e)) {
+              throw e;
+            }
+            return reportForbiddenError({
+              res,
+              message: "Authorization failed",
+            });
+          }
+        }
+        req.user = user;
+      } catch (e) {
+        if (config.user.required !== false) {
+          if (isCustomError(e)) {
+            return respond({
+              res,
+              status: e.status,
+              data: e.data,
+              message: e.message,
+            });
+          }
+          return reportUnauthorizedError({
+            res,
+            message: "Unauthenticated",
+          });
+        }
+      }
+    }
+    next();
+  };
+
   const handler = async (req: Request, res: Response) => {
     const logger = createLogger();
     try {
@@ -176,58 +228,58 @@ export function route<
         }
       }
 
-      let user: any = undefined;
-      if (config.user) {
-        const configUser = config.user;
-        try {
-          user = await logger.asyncProcess(
-            "Getting the user from the request",
-            async () => {
-              return await configUser.getCurrentUser(req, logger);
-            },
-          );
+      // let user: any = undefined;
+      // if (config.user) {
+      //   const configUser = config.user;
+      //   try {
+      //     user = await logger.asyncProcess(
+      //       "Getting the user from the request",
+      //       async () => {
+      //         return await configUser.getCurrentUser(req, logger);
+      //       },
+      //     );
 
-          if (configUser.authorize) {
-            logger.info("Additional authorization required");
-            const authorizationCallback = configUser.authorize;
+      //     if (configUser.authorize) {
+      //       logger.info("Additional authorization required");
+      //       const authorizationCallback = configUser.authorize;
 
-            try {
-              await logger.asyncProcess("Authorizing user", async () => {
-                const authorized = await authorizationCallback(user, logger);
-                if (!authorized) {
-                  throw new Error("Authorization failed");
-                }
-              });
-            } catch (e) {
-              logger.sources.pop();
-              if (isCustomError(e)) {
-                throw e;
-              }
-              return reportForbiddenError({
-                res,
-                message: "Authorization failed",
-              });
-            }
-          }
-        } catch (e) {
-          logger.info("Checking to see if user is required for this route...");
-          if (config.user.required !== false) {
-            logger.error(
-              "User is required for this route. Failed to get one from the request",
-            );
+      //       try {
+      //         await logger.asyncProcess("Authorizing user", async () => {
+      //           const authorized = await authorizationCallback(user, logger);
+      //           if (!authorized) {
+      //             throw new Error("Authorization failed");
+      //           }
+      //         });
+      //       } catch (e) {
+      //         logger.sources.pop();
+      //         if (isCustomError(e)) {
+      //           throw e;
+      //         }
+      //         return reportForbiddenError({
+      //           res,
+      //           message: "Authorization failed",
+      //         });
+      //       }
+      //     }
+      //   } catch (e) {
+      //     logger.info("Checking to see if user is required for this route...");
+      //     if (config.user.required !== false) {
+      //       logger.error(
+      //         "User is required for this route. Failed to get one from the request",
+      //       );
 
-            logger.sources.pop();
-            if (isCustomError(e)) {
-              throw e;
-            }
-            return reportUnauthorizedError({
-              res,
-              message: "Unauthenticated",
-            });
-          }
-          logger.info("User is not required for this route");
-        }
-      }
+      //       logger.sources.pop();
+      //       if (isCustomError(e)) {
+      //         throw e;
+      //       }
+      //       return reportUnauthorizedError({
+      //         res,
+      //         message: "Unauthenticated",
+      //       });
+      //     }
+      //     logger.info("User is not required for this route");
+      //   }
+      // }
 
       function respond(
         localConfig: FirstArgument<
@@ -556,7 +608,7 @@ export function route<
         request: req,
         response: res,
         responses: config.response,
-        user,
+        user: req.user,
         logger,
         device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
         deviceInfo: req.useragent ? getDeviceId(req.useragent) : undefined,
@@ -784,29 +836,40 @@ export function route<
   const attachToRouter = (router: Router) => {
     config.methods.forEach((method) => {
       const allMiddleware = [
+        authenticationMiddleware,
         ...middleware,
-        ...(config.rateLimiting
+        ...(config.rateLimitGuests
           ? [
-              rateLimit(
-                (() => {
-                  const options = config.rateLimiting!;
-                  if ("type" in options && options.type === "custom") {
-                    return {
-                      windowMs:
-                        options.per.unit === "seconds"
-                          ? options.per.amount * 1000
-                          : options.per.unit === "minutes"
-                            ? options.per.amount * 60 * 1000
-                            : options.per.amount * 60 * 60 * 1000, // default to per hour
-                      max: options.requests, // Limit each IP to these requests per `window`
-                      standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-                      legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-                    } as Partial<Options>;
-                  }
-                  return config.rateLimiting as Options;
-                })(),
-              ),
+              (req: Request, res: Response, next: NextFunction) => {
+                if (!req.user) {
+                  const options = config.rateLimitGuests!;
+                  return rateLimit(getRateLimitingOptions(options))(
+                    req,
+                    res,
+                    next,
+                  );
+                }
+                next();
+              },
             ]
+          : []),
+        ...(config.rateLimitUsers
+          ? [
+              (req: Request, res: Response, next: NextFunction) => {
+                if (req.user) {
+                  const options = config.rateLimitUsers!;
+                  return rateLimit(getRateLimitingOptions(options))(
+                    req,
+                    res,
+                    next,
+                  );
+                }
+                next();
+              },
+            ]
+          : []),
+        ...(config.rateLimit
+          ? [rateLimit(getRateLimitingOptions(config.rateLimit))]
           : []),
       ];
 

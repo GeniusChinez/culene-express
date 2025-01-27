@@ -4,9 +4,19 @@ import { z, ZodSchema, ZodType } from "zod";
 import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import { Request, Response, Router } from "express";
-import { createLogger, Logger } from "./logs";
+import { createLogger } from "./logs";
 import { getDeviceId } from "./device";
 import { Options as RateLimitingOptions } from "express-rate-limit";
+import { CustomRateLimitingOptions } from "./rate-limiting";
+
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      user?: any;
+    }
+  }
+}
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -61,18 +71,12 @@ type HasKeys<T> = keyof T extends never ? false : true;
 type InferUserType<UserSpec> =
   HasKeys<UserSpec> extends true
     ? UserSpec extends {
-        getCurrentUser: (
-          request: Request,
-          logger: Logger,
-        ) => Promise<infer UserT>;
+        getCurrentUser: (request: Request) => Promise<infer UserT>;
         required: false;
       }
       ? UserT | undefined
       : UserSpec extends {
-            getCurrentUser: (
-              request: Request,
-              logger: Logger,
-            ) => Promise<infer UserT>;
+            getCurrentUser: (request: Request) => Promise<infer UserT>;
           }
         ? UserT
         : never
@@ -267,21 +271,11 @@ export interface RouteConfig<
   user?: {
     [k in keyof UserSpec]: UserSpec[k];
   } & {
-    authorize?: (
-      user: InferUserType<UserSpec>,
-      logger: Logger,
-    ) => boolean | Promise<boolean>;
+    authorize?: (user: InferUserType<UserSpec>) => boolean | Promise<boolean>;
   };
-  rateLimiting?:
-    | Partial<RateLimitingOptions>
-    | {
-        type: "custom";
-        requests: number;
-        per: {
-          unit: "seconds" | "minutes" | "hours";
-          amount: number;
-        };
-      };
+  rateLimit?: Partial<RateLimitingOptions> | CustomRateLimitingOptions;
+  rateLimitGuests?: Partial<RateLimitingOptions> | CustomRateLimitingOptions;
+  rateLimitUsers?: Partial<RateLimitingOptions> | CustomRateLimitingOptions;
   input?: {
     query?: QuerySchema;
     params?: ParamsSchema;

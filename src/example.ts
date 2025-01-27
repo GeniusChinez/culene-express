@@ -152,6 +152,14 @@ export const routeX = route(
       },
       501: "soMETHING",
     },
+    rateLimitGuests: {
+      type: "custom",
+      requests: 1,
+      per: {
+        unit: "hours",
+        amount: 1,
+      },
+    },
   } as const,
   async (ctx) => {
     const temp = ctx.user;
