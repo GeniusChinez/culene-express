@@ -18,7 +18,17 @@ export interface AppConfig {
   useHelmet?: boolean;
   rateLimiting?: {
     numberOfProxies?: number;
-  } & Partial<RateLimitingOptions>;
+  } & (
+    | Partial<RateLimitingOptions>
+    | {
+        type: "custom";
+        requests: number;
+        per: {
+          unit: "seconds" | "minutes" | "hours";
+          amount: number;
+        };
+      }
+  );
   tempFileDir?: string;
   routes: ReturnType<typeof route>[];
 
@@ -79,7 +89,25 @@ export async function createApp(config: AppConfig): Promise<{
     const options = config.rateLimiting;
 
     log.process("Setting up rate-limiting using express-rate-limiter", () => {
-      const limiter = rateLimit(options);
+      const limiter = rateLimit(
+        (() => {
+          const options = config.rateLimiting!;
+          if ("type" in options && options.type === "custom") {
+            return {
+              windowMs:
+                options.per.unit === "seconds"
+                  ? options.per.amount * 1000
+                  : options.per.unit === "minutes"
+                    ? options.per.amount * 60 * 1000
+                    : options.per.amount * 60 * 60 * 1000, // default to per hour
+              max: options.requests, // Limit each IP to these requests per `window`
+              standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+              legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+            } as Partial<RateLimitingOptions>;
+          }
+          return config.rateLimiting as RateLimitingOptions;
+        })(),
+      );
 
       if (options.numberOfProxies) {
         log.info(

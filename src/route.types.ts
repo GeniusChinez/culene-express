@@ -272,7 +272,16 @@ export interface RouteConfig<
       logger: Logger,
     ) => boolean | Promise<boolean>;
   };
-  rateLimiting?: Partial<RateLimitingOptions>;
+  rateLimiting?:
+    | Partial<RateLimitingOptions>
+    | {
+        type: "custom";
+        requests: number;
+        per: {
+          unit: "seconds" | "minutes" | "hours";
+          amount: number;
+        };
+      };
   input?: {
     query?: QuerySchema;
     params?: ParamsSchema;

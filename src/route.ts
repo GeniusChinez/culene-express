@@ -11,7 +11,7 @@ import {
 import { createLogger, Logger } from "./logs";
 import { Request, Response, Router } from "express";
 import { CustomError, isCustomError } from "./custom-error";
-import rateLimit from "express-rate-limit";
+import rateLimit, { Options } from "express-rate-limit";
 import {
   okResponse,
   reportBadRequestError,
@@ -785,7 +785,29 @@ export function route<
     config.methods.forEach((method) => {
       const allMiddleware = [
         ...middleware,
-        ...(config.rateLimiting ? [rateLimit(config.rateLimiting)] : []),
+        ...(config.rateLimiting
+          ? [
+              rateLimit(
+                (() => {
+                  const options = config.rateLimiting!;
+                  if ("type" in options && options.type === "custom") {
+                    return {
+                      windowMs:
+                        options.per.unit === "seconds"
+                          ? options.per.amount * 1000
+                          : options.per.unit === "minutes"
+                            ? options.per.amount * 60 * 1000
+                            : options.per.amount * 60 * 60 * 1000, // default to per hour
+                      max: options.requests, // Limit each IP to these requests per `window`
+                      standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+                      legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+                    } as Partial<Options>;
+                  }
+                  return config.rateLimiting as Options;
+                })(),
+              ),
+            ]
+          : []),
       ];
 
       (router as any)[method.toLowerCase()](
