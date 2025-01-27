@@ -198,6 +198,7 @@ export async function createApp(config: AppConfig): Promise<{
             filter: true,
           },
           customSiteTitle: config.title,
+          // @todo: permit searching
         }),
       );
     },

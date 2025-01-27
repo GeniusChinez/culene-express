@@ -558,6 +558,7 @@ export function route<
         user,
         logger,
         device: req.useragent ? getDeviceId(req.useragent).name : "Unknown",
+        deviceInfo: req.useragent ? getDeviceId(req.useragent) : undefined,
         action: <
           Returns = void,
           OnErrorResult = never,

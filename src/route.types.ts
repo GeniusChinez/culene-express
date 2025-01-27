@@ -5,6 +5,7 @@ import { HttpMethod } from "./methods";
 import { Middleware } from "./middleware";
 import { Request, Response, Router } from "express";
 import { createLogger, Logger } from "./logs";
+import { getDeviceId } from "./device";
 
 // Define a utility type that ensures any Zod schema is compatible with ZodType
 export type ZodCompatible<T> =
@@ -234,6 +235,7 @@ export type HandlerArgs<
   answer: AnswerFunctionConfig<Responses>;
   fatal: FatalFunctionConfig<Responses>;
   device: string;
+  deviceInfo: ReturnType<typeof getDeviceId> | undefined;
   responses: Responses;
   user: InferUserType<UserSpec>;
   action: typeof action;
