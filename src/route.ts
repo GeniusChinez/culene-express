@@ -118,7 +118,7 @@ export function route<
 
   const handler = async (req: Request, res: Response) => {
     const logger = createLogger({
-      ouputFile: `./logs/${req.method.toLowerCase()}.${req.path.replaceAll("/", ".").slice(1)}.log`,
+      ouputFile: `./logs/${req.method.toLowerCase()}.${config.path.replaceAll("/", ".").slice(1)}.log`,
       customFormat: (data: {
         timestamp: string;
         level: string;
@@ -127,11 +127,12 @@ export function route<
         JSON.stringify({
           ...data,
           ip: getUserIp(req),
+          path: req.path,
         }),
     });
 
     try {
-      logger.sources.push(`${req.ip} ${req.method.toUpperCase()}`);
+      logger.sources.push(`${req.method.toUpperCase()}`);
 
       let query: any = undefined;
       let body: any = undefined;
