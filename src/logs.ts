@@ -2,7 +2,7 @@
 import winston from "winston";
 
 export function createLogger(config?: {
-  customFormat: (data: {
+  customFormat?: (data: {
     timestamp: string;
     level: string;
     message: unknown;

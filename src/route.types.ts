@@ -243,6 +243,7 @@ export type HandlerArgs<
   deviceInfo: ReturnType<typeof getDeviceId> | undefined;
   responses: Responses;
   user: InferUserType<UserSpec>;
+  ip: string;
   action: typeof action;
   asyncAction: typeof asyncAction;
 };

@@ -26,6 +26,7 @@ import { getDeviceId } from "./device";
 import { formatZodError } from "./validations";
 import { inlineNestedSchemas } from "./inline-schemas";
 import { getRateLimitingOptions } from "./rate-limiting";
+import { getUserIp } from "./ip";
 
 export function route<
   QuerySchema extends ZodCompatible<ZodSchema<any>>,
@@ -116,11 +117,21 @@ export function route<
   };
 
   const handler = async (req: Request, res: Response) => {
-    const logger = createLogger();
+    const logger = createLogger({
+      ouputFile: `./logs/${req.method.toLowerCase()}.${req.path.replaceAll("/", ".").slice(1)}.log`,
+      customFormat: (data: {
+        timestamp: string;
+        level: string;
+        message: unknown;
+      }) =>
+        JSON.stringify({
+          ...data,
+          ip: getUserIp(req),
+        }),
+    });
+
     try {
-      logger.sources.push(
-        `${req.ip} ${req.method.toUpperCase()} ${config.path}`,
-      );
+      logger.sources.push(`${req.ip} ${req.method.toUpperCase()}`);
 
       let query: any = undefined;
       let body: any = undefined;
@@ -605,6 +616,7 @@ export function route<
         Responses,
         UserSpec
       > = {
+        ip: getUserIp(req),
         request: req,
         response: res,
         responses: config.response,
