@@ -45,6 +45,7 @@ export interface AppConfig {
   >;
 
   logger?: ReturnType<typeof createLogger>;
+  disableLogging?: "console" | "file" | "all";
 }
 
 export async function createApp(config: AppConfig): Promise<{
@@ -57,7 +58,11 @@ export async function createApp(config: AppConfig): Promise<{
     },
   ) => void;
 }> {
-  const log = config.logger || createLogger();
+  const log =
+    config.logger ||
+    createLogger({
+      disable: config.disableLogging,
+    });
   log.sources.push("CreateApp");
 
   const app = log.process("Creating Express app", () => {

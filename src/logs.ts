@@ -2,6 +2,7 @@
 import winston from "winston";
 
 export function createLogger(config?: {
+  disable?: "console" | "file" | "all";
   customFormat?: (data: {
     timestamp: string;
     level: string;
@@ -10,6 +11,10 @@ export function createLogger(config?: {
   ouputFile?: string;
 }) {
   const logFormat = winston.format.printf(({ timestamp, level, message }) => {
+    if (config?.disable === "all") {
+      return "";
+    }
+
     if (config?.customFormat) {
       return config.customFormat({
         timestamp: (timestamp as any)?.toString(),
@@ -24,10 +29,16 @@ export function createLogger(config?: {
     level: "info",
     format: winston.format.combine(winston.format.timestamp(), logFormat),
     transports: [
-      new winston.transports.Console(),
-      new winston.transports.File({
-        filename: config?.ouputFile || "server.log",
-      }),
+      ...(config?.disable === "console"
+        ? []
+        : [new winston.transports.Console()]),
+      ...(config?.disable === "file"
+        ? []
+        : [
+            new winston.transports.File({
+              filename: config?.ouputFile || "server.log",
+            }),
+          ]),
     ],
   });
 
@@ -35,6 +46,9 @@ export function createLogger(config?: {
   let processes: string[] = [];
 
   const info = (message: string) => {
+    if (config?.disable === "all") {
+      return;
+    }
     const process =
       processes.length > 0 ? processes[processes.length - 1] : undefined;
     if (process) {
@@ -47,6 +61,9 @@ export function createLogger(config?: {
   };
 
   const error = (message?: string) => {
+    if (config?.disable === "all") {
+      return;
+    }
     const process =
       processes.length > 0 ? processes[processes.length - 1] : undefined;
     if (process) {
@@ -59,6 +76,9 @@ export function createLogger(config?: {
   };
 
   const warning = (message: string) => {
+    if (config?.disable === "all") {
+      return;
+    }
     const process =
       processes.length > 0 ? processes[processes.length - 1] : undefined;
     if (process) {
@@ -82,6 +102,9 @@ export function createLogger(config?: {
   const _processes = {
     start: (name: string) => {
       processes.push(name);
+      if (config?.disable === "all") {
+        return;
+      }
       logger.info(`${sources.slice(-1)[0]}> ${name}`);
     },
     stop: (message?: string) => {
@@ -89,6 +112,9 @@ export function createLogger(config?: {
         processes.length > 0 ? processes[processes.length - 1] : undefined;
       if (process) {
         processes = processes.slice(0, processes.length - 1);
+        if (config?.disable === "all") {
+          return;
+        }
         logger.info(
           `${sources.slice(-1)[0]}> during **${process}**: ${message || "Done!"}`,
         );
@@ -98,20 +124,26 @@ export function createLogger(config?: {
       const process =
         processes.length > 0 ? processes[processes.length - 1] : undefined;
       if (process) {
+        processes = processes.slice(0, processes.length - 1);
+        if (config?.disable === "all") {
+          return;
+        }
         logger.error(
           `${sources.slice(-1)[0]}> during **${process}**: ${message || "Unexpected error"}`,
         );
-        processes = processes.slice(0, processes.length - 1);
       }
     },
     stopWithWarning: (message: string) => {
       const process =
         processes.length > 0 ? processes[processes.length - 1] : undefined;
       if (process) {
+        processes = processes.slice(0, processes.length - 1);
+        if (config?.disable === "all") {
+          return;
+        }
         logger.warn(
           `${sources.slice(-1)[0]}> during **${process}**: ${message}`,
         );
-        processes = processes.slice(0, processes.length - 1);
       }
     },
   };

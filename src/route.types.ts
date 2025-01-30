@@ -264,6 +264,7 @@ export interface RouteConfig<
   },
   UserSpec,
 > {
+  disableLogging?: "console" | "file" | "all";
   router?: Router;
   methods: HttpMethod[];
   path: string;

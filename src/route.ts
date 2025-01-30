@@ -118,6 +118,7 @@ export function route<
 
   const handler = async (req: Request, res: Response) => {
     const logger = createLogger({
+      disable: config.disableLogging,
       ouputFile: `./logs/${req.method.toLowerCase()}.${config.path.replaceAll("/", ".").replaceAll(":", "_").slice(1)}.log`,
       customFormat: (data: {
         timestamp: string;
