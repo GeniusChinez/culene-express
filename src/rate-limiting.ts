@@ -7,11 +7,38 @@ export type CustomRateLimitingOptions = {
     unit: "seconds" | "minutes" | "hours";
     amount: number;
   };
+  onDuringTesting?: boolean;
 };
 
 export type RateLimitingConfig =
   | Partial<RateLimitingOptions>
   | CustomRateLimitingOptions;
+
+function isRateLimitingOnDuringTesting(config: RateLimitingConfig) {
+  if ("type" in config && config.type === "custom") {
+    return config.onDuringTesting === true;
+  }
+  return true;
+}
+
+export function isRateLimitingOn(
+  environment?: "test" | "development" | "production",
+  config?: RateLimitingConfig,
+): config is RateLimitingConfig {
+  if (!config) {
+    return false;
+  }
+
+  if (!environment) {
+    return true;
+  }
+
+  if (environment === "test") {
+    return isRateLimitingOnDuringTesting(config);
+  }
+
+  return true;
+}
 
 export function getRateLimitingOptions(config: RateLimitingConfig) {
   if ("type" in config && config.type === "custom") {

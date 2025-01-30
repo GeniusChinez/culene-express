@@ -25,7 +25,7 @@ import { generateHtmlFromOpenAPISpec } from "./route-html-spec";
 import { getDeviceId } from "./device";
 import { formatZodError } from "./validations";
 import { inlineNestedSchemas } from "./inline-schemas";
-import { getRateLimitingOptions } from "./rate-limiting";
+import { getRateLimitingOptions, isRateLimitingOn } from "./rate-limiting";
 import { getUserIp } from "./ip";
 
 export function route<
@@ -118,7 +118,11 @@ export function route<
 
   const handler = async (req: Request, res: Response) => {
     const logger = createLogger({
-      disable: config.disableLogging,
+      disable: config.disableLogging
+        ? config.disableLogging
+        : config.environment === "test"
+          ? "all"
+          : undefined,
       ouputFile: `./logs/${req.method.toLowerCase()}.${config.path.replaceAll("/", ".").replaceAll(":", "_").slice(1)}.log`,
       customFormat: (data: {
         timestamp: string;
@@ -852,7 +856,7 @@ export function route<
       const allMiddleware = [
         authenticationMiddleware,
         ...middleware,
-        ...(config.rateLimitGuests
+        ...(isRateLimitingOn(config.environment, config.rateLimitGuests)
           ? [
               (req: Request, res: Response, next: NextFunction) => {
                 if (!req.user) {
@@ -867,7 +871,7 @@ export function route<
               },
             ]
           : []),
-        ...(config.rateLimitUsers
+        ...(isRateLimitingOn(config.environment, config.rateLimitUsers)
           ? [
               (req: Request, res: Response, next: NextFunction) => {
                 if (req.user) {
@@ -882,7 +886,7 @@ export function route<
               },
             ]
           : []),
-        ...(config.rateLimit
+        ...(isRateLimitingOn(config.environment, config.rateLimit)
           ? [rateLimit(getRateLimitingOptions(config.rateLimit))]
           : []),
       ];

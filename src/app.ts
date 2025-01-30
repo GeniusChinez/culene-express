@@ -13,7 +13,11 @@ import notFoundHandler from "./not-found";
 import { route } from "./route";
 
 import { createLogger } from "./logs";
-import { getRateLimitingOptions, RateLimitingConfig } from "./rate-limiting";
+import {
+  getRateLimitingOptions,
+  isRateLimitingOn,
+  RateLimitingConfig,
+} from "./rate-limiting";
 
 export interface AppConfig {
   useHelmet?: boolean;
@@ -46,6 +50,7 @@ export interface AppConfig {
 
   logger?: ReturnType<typeof createLogger>;
   disableLogging?: "console" | "file" | "all";
+  environment?: "test" | "development" | "production";
 }
 
 export async function createApp(config: AppConfig): Promise<{
@@ -61,7 +66,11 @@ export async function createApp(config: AppConfig): Promise<{
   const log =
     config.logger ||
     createLogger({
-      disable: config.disableLogging,
+      disable: config.disableLogging
+        ? config.disableLogging
+        : config.environment === "test"
+          ? "all"
+          : undefined,
     });
   log.sources.push("CreateApp");
 
@@ -80,7 +89,7 @@ export async function createApp(config: AppConfig): Promise<{
   });
 
   // setup rate limiting
-  if (config.rateLimiting) {
+  if (isRateLimitingOn(config.environment, config.rateLimiting)) {
     log.info("Rate-Limiting options are provided");
     const options = config.rateLimiting;
 
